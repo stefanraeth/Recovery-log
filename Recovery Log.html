@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Recovery Log</title>
+
+<!-- iOS "Add to Home Screen" support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Recovery Log">
+<meta name="theme-color" content="#16233F">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2316233F'/%3E%3Ctext x='50' y='63' font-family='Georgia,serif' font-size='42' font-weight='bold' fill='%23C99A2E' text-anchor='middle'%3ERL%3C/text%3E%3C/svg%3E">
+
+<!-- Android / Chrome install support -->
+<link rel="manifest" href='data:application/manifest+json,{"name":"Recovery Log","short_name":"Recovery Log","start_url":".","display":"standalone","background_color":"%23FBF8F2","theme_color":"%2316233F","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%2316233F\'/%3E%3Ctext x=\'50\' y=\'63\' font-family=\'Georgia,serif\' font-size=\'42\' font-weight=\'bold\' fill=\'%23C99A2E\' text-anchor=\'middle\'%3ERL%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF8F2;
+    --surface:#FFFFFF;
+    --ink:#16233F;
+    --ink-soft:#4A5A7B;
+    --line:#DCD3C0;
+    --gold:#C99A2E;
+    --teal:#2F5D62;
+    --good:#3E7A57;
+    --warn:#B4562B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Source Serif 4', serif;
+    padding-bottom:60px;
+  }
+  .display{font-family:'Big Shoulders Display', sans-serif; font-weight:800; letter-spacing:0.01em;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{
+    padding:28px 20px 18px;
+    border-bottom:3px solid var(--ink);
+    display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px;
+  }
+  header h1{font-size:2.4rem; margin:0; line-height:0.9; text-transform:uppercase;}
+  header p{margin:4px 0 0; color:var(--ink-soft); font-size:0.95rem;}
+  .phase-toggle{display:flex; gap:0; border:2px solid var(--ink); border-radius:3px; overflow:hidden;}
+  .phase-toggle button{
+    font-family:'IBM Plex Mono', monospace; font-size:0.8rem; padding:8px 14px; border:none;
+    background:var(--surface); color:var(--ink); cursor:pointer; letter-spacing:0.05em;
+  }
+  .phase-toggle button.active{background:var(--ink); color:var(--bg);}
+  .gear{background:none; border:2px solid var(--ink); border-radius:3px; width:38px; height:38px; cursor:pointer; font-size:1rem;}
+
+  .scoreboard{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--ink); margin:0;}
+  .score-block{background:var(--surface); padding:14px 16px;}
+  .score-block .label{font-family:'IBM Plex Mono'; font-size:0.7rem; letter-spacing:0.1em; color:var(--ink-soft);}
+  .score-block .nums{font-family:'IBM Plex Mono'; font-size:1.15rem; margin-top:4px;}
+  .score-block .nums .target{color:var(--ink-soft); font-size:0.85rem;}
+  .bar-track{height:6px; background:var(--line); margin-top:8px; border-radius:3px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--teal); transition:width 0.3s;}
+  .bar-fill.over{background:var(--gold);}
+
+  .timeline-wrap{padding:18px 20px 20px; border-bottom:1px solid var(--line);}
+  .timeline-wrap h3{font-family:'IBM Plex Mono'; font-size:0.75rem; letter-spacing:0.1em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
+  .timeline-track{position:relative; height:54px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-top:6px;}
+  .tl-tick{position:absolute; top:0; bottom:0; width:1px; background:var(--line);}
+  .tl-tick span{position:absolute; bottom:-20px; left:-14px; font-family:'IBM Plex Mono'; font-size:0.65rem; color:var(--ink-soft); width:30px; text-align:center;}
+  .tl-dot{position:absolute; top:18px; width:16px; height:16px; border-radius:50%; border:2px solid var(--ink); transform:translateX(-50%);}
+  .tl-dot.good{background:var(--good);}
+  .tl-dot.warn{background:var(--warn);}
+  .tl-empty{color:var(--ink-soft); font-size:0.85rem; padding:14px 0;}
+
+  nav.tabs{display:flex; border-bottom:2px solid var(--ink); margin:0 20px;}
+  nav.tabs button{
+    flex:1; background:none; border:none; padding:12px 8px; font-family:'IBM Plex Mono'; font-size:0.8rem;
+    letter-spacing:0.06em; color:var(--ink-soft); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;
+  }
+  nav.tabs button.active{color:var(--ink); border-bottom-color:var(--gold); font-weight:600;}
+
+  main{padding:20px;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .subtabs{display:flex; gap:8px; margin-bottom:16px;}
+  .subtabs button{
+    font-family:'IBM Plex Mono'; font-size:0.75rem; padding:6px 12px; border:1px solid var(--ink);
+    background:var(--surface); border-radius:20px; cursor:pointer; color:var(--ink);
+  }
+  .subtabs button.active{background:var(--ink); color:var(--bg);}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-family:'IBM Plex Mono'; font-size:0.7rem; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase;}
+  .field input, .field select{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'Source Serif 4';
+    font-size:0.95rem; background:var(--bg); color:var(--ink);
+  }
+  .row4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .btn{
+    font-family:'IBM Plex Mono'; font-size:0.8rem; letter-spacing:0.04em; padding:10px 18px; border-radius:4px;
+    border:2px solid var(--ink); background:var(--ink); color:var(--bg); cursor:pointer;
+  }
+  .btn.secondary{background:var(--surface); color:var(--ink);}
+  .btn:disabled{opacity:0.5; cursor:default;}
+
+  .small-note{font-size:0.78rem; color:var(--ink-soft); margin-top:6px;}
+  .analysis-item{border-top:1px solid var(--line); padding-top:10px; margin-top:10px;}
+
+  .lineup-row{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .lineup-row .time{font-family:'IBM Plex Mono'; font-size:0.8rem; color:var(--ink-soft); width:56px; flex-shrink:0;}
+  .lineup-row .name{flex:1;}
+  .lineup-row .macros{font-family:'IBM Plex Mono'; font-size:0.78rem; color:var(--ink-soft); text-align:right; width:150px;}
+  .lineup-row .del{background:none; border:none; color:var(--warn); font-size:1.2rem; cursor:pointer; width:24px;}
+
+  .hist-row{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono'; font-size:0.85rem;}
+
+  .modal-bg{display:none; position:fixed; inset:0; background:rgba(22,35,63,0.5); z-index:10; align-items:center; justify-content:center;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface); border-radius:8px; padding:24px; width:90%; max-width:420px; max-height:85vh; overflow-y:auto;}
+  .modal h2{font-family:'Big Shoulders Display'; margin-top:0;}
+  .modal hr{border:none; border-top:1px solid var(--line); margin:16px 0;}
+
+  .empty-state{color:var(--ink-soft); font-size:0.9rem; padding:20px 0; text-align:center;}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg);
+    padding:10px 18px; border-radius:6px; font-family:'IBM Plex Mono'; font-size:0.8rem; opacity:0; transition:opacity 0.3s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 class="display">Recovery Log</h1>
+    <p>Nutrition tracker &mdash; today, <span id="todayLabel"></span></p>
+  </div>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <div class="phase-toggle">
+      <button id="phase1Btn" onclick="setPhase('phase1')">PHASE 1</button>
+      <button id="phase2Btn" onclick="setPhase('phase2')">PHASE 2</button>
+    </div>
+    <button class="gear" onclick="openSettings()" title="Settings">&#9881;</button>
+  </div>
+</header>
+
+<div class="scoreboard" id="scoreboard"></div>
+
+<div class="timeline-wrap">
+  <h3>Meal spacing today &mdash; aim for a hit every 3&ndash;4 hrs, not one big feed at night</h3>
+  <div class="timeline-track" id="timelineTrack"></div>
+</div>
+
+<nav class="tabs">
+  <button id="tabLogBtn" class="active" onclick="switchTab('log')">LOG MEAL</button>
+  <button id="tabTodayBtn" onclick="switchTab('today')">TODAY</button>
+  <button id="tabHistBtn" onclick="switchTab('history')">HISTORY</button>
+</nav>
+
+<main>
+  <!-- LOG PANEL -->
+  <div class="panel active" id="panelLog">
+    <div class="subtabs">
+      <button id="subManualBtn" class="active" onclick="switchSub('manual')">Manual</button>
+      <button id="subBarcodeBtn" onclick="switchSub('barcode')">Barcode</button>
+    </div>
+
+    <div id="subManual">
+      <div class="card">
+        <div class="field">
+          <label>Food / meal name</label>
+          <input type="text" id="manName" placeholder="e.g. Grilled chicken, rice, broccoli">
+        </div>
+        <div class="row2">
+          <div class="field"><label>Time</label><input type="time" id="manTime"></div>
+          <div class="field"><label>Calories (optional &mdash; auto-calculated)</label><input type="number" id="manCal" placeholder="auto"></div>
+        </div>
+        <div class="row4">
+          <div class="field"><label>Protein (g)</label><input type="number" id="manProtein" value="0"></div>
+          <div class="field"><label>Carbs (g)</label><input type="number" id="manCarbs" value="0"></div>
+          <div class="field"><label>Fat (g)</label><input type="number" id="manFat" value="0"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="addManualMeal()">Log meal</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="subBarcode" style="display:none;">
+      <div class="card">
+        <div id="scannerArea" style="display:none;">
+          <video id="scannerVideo" playsinline muted style="width:100%; border-radius:6px; background:#000;"></video>
+          <button class="btn secondary" style="width:100%; margin-top:8px;" onclick="stopScanner()">Stop camera</button>
+        </div>
+        <button class="btn" id="startScanBtn" style="width:100%;" onclick="startScanner()">Scan with camera</button>
+        <p class="small-note" id="scannerNote">If camera scanning isn't supported on this browser, enter the barcode number below instead.</p>
+
+        <div class="row2" style="margin-top:14px;">
+          <div class="field"><label>Barcode number</label><input type="text" id="barcodeInput" inputmode="numeric" placeholder="e.g. 038000138416"></div>
+          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%;" onclick="lookupBarcode()">Look up</button></div>
+        </div>
+        <div id="barcodeLoading" style="display:none;" class="small-note">Looking up product&hellip;</div>
+        <div id="barcodeResults"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TODAY PANEL -->
+  <div class="panel" id="panelToday">
+    <div class="card" id="lineupCard"><div id="lineupList"></div></div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div class="panel" id="panelHistory">
+    <div class="card" id="historyCard"><div id="historyList"></div></div>
+  </div>
+</main>
+
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h2>Daily targets</h2>
+    <div class="row2">
+      <div class="field"><label>Calories</label><input type="number" id="setCal"></div>
+      <div class="field"><label>Protein (g)</label><input type="number" id="setProtein"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Carbs (g)</label><input type="number" id="setCarbs"></div>
+      <div class="field"><label>Fat (g)</label><input type="number" id="setFat"></div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn" onclick="saveSettings()">Save</button>
+      <button class="btn secondary" onclick="closeSettings()">Cancel</button>
+    </div>
+    <hr>
+    <h2 style="font-size:1.4rem;">Backup &amp; transfer</h2>
+    <p class="small-note">This app's data lives only on this device/browser. Use export to back it up or move it to another device &mdash; family members should install their own copy rather than importing your file, so everyone gets their own separate log.</p>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn secondary" style="flex:1;" onclick="exportData()">Export backup</button>
+      <button class="btn secondary" style="flex:1;" onclick="document.getElementById('importFile').click()">Import backup</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEFAULT_TARGETS = {
+  phase1: {calories:2250, protein:185, carbs:165, fat:75},
+  phase2: {calories:2350, protein:180, carbs:180, fat:80}
+};
+let state = { phase:'phase1', targets:null, meals:[] };
+
+function lsGet(key){ try{ return localStorage.getItem(key); } catch(e){ return null; } }
+function lsSet(key, value){ try{ localStorage.setItem(key, value); return true; } catch(e){ return false; } }
+function lsListPrefix(prefix){
+  const keys = [];
+  try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf(prefix)===0) keys.push(k); } } catch(e){}
+  return keys;
+}
+
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function nowTime(){
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function init(){
+  document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
+  document.getElementById('manTime').value = nowTime();
+
+  const rawSettings = lsGet('settings:targets');
+  if(rawSettings){
+    try{
+      const parsed = JSON.parse(rawSettings);
+      state.phase = parsed.phase || 'phase1';
+      state.targets = parsed.targets || DEFAULT_TARGETS[state.phase];
+    } catch(e){ state.targets = DEFAULT_TARGETS.phase1; }
+  } else {
+    state.targets = DEFAULT_TARGETS.phase1;
+  }
+  updatePhaseButtons();
+
+  const rawMeals = lsGet('meals:'+todayKey());
+  try{ state.meals = rawMeals ? JSON.parse(rawMeals) : []; } catch(e){ state.meals = []; }
+
+  renderAll();
+  loadHistory();
+}
+
+function renderAll(){ renderScoreboard(); renderTimeline(); renderLineup(); }
+
+function renderScoreboard(){
+  const totals = state.meals.reduce((acc,m)=>{
+    acc.calories += Number(m.calories)||0;
+    acc.protein += Number(m.protein)||0;
+    acc.carbs += Number(m.carbs)||0;
+    acc.fat += Number(m.fat)||0;
+    return acc;
+  }, {calories:0, protein:0, carbs:0, fat:0});
+
+  const blocks = [
+    {label:'CALORIES', val:totals.calories, target:state.targets.calories, unit:''},
+    {label:'PROTEIN', val:totals.protein, target:state.targets.protein, unit:'g'},
+    {label:'CARBS', val:totals.carbs, target:state.targets.carbs, unit:'g'},
+    {label:'FAT', val:totals.fat, target:state.targets.fat, unit:'g'}
+  ];
+  document.getElementById('scoreboard').innerHTML = blocks.map(b=>{
+    const pct = b.target ? Math.min(100, (b.val/b.target)*100) : 0;
+    const over = b.val > b.target;
+    return `<div class="score-block">
+      <div class="label">${b.label}</div>
+      <div class="nums">${Math.round(b.val)}${b.unit} <span class="target">/ ${b.target}${b.unit}</span></div>
+      <div class="bar-track"><div class="bar-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTimeline(){
+  const track = document.getElementById('timelineTrack');
+  track.innerHTML = '';
+  const startHour = 5, endHour = 23;
+  const totalMin = (endHour-startHour)*60;
+
+  [6,9,12,15,18,21].forEach(h=>{
+    const pct = ((h-startHour)*60/totalMin)*100;
+    const tick = document.createElement('div');
+    tick.className = 'tl-tick';
+    tick.style.left = pct+'%';
+    tick.innerHTML = `<span>${h>12? (h-12)+'p':h+'a'}</span>`;
+    track.appendChild(tick);
+  });
+
+  if(state.meals.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'tl-empty';
+    empty.textContent = 'No meals logged yet today.';
+    track.appendChild(empty);
+    return;
+  }
+
+  const sorted = [...state.meals].sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+  let prevMin = null;
+  sorted.forEach(m=>{
+    const [hh,mm] = (m.time||'12:00').split(':').map(Number);
+    const mins = hh*60+mm;
+    const clamped = Math.max(startHour*60, Math.min(endHour*60, mins));
+    const pct = ((clamped - startHour*60)/totalMin)*100;
+    let cls = 'good';
+    if(prevMin !== null && (mins - prevMin) > 300){ cls = 'warn'; }
+    prevMin = mins;
+    const dot = document.createElement('div');
+    dot.className = 'tl-dot '+cls;
+    dot.style.left = pct+'%';
+    dot.title = m.name+' @ '+m.time;
+    track.appendChild(dot);
+  });
+}
+
+function renderLineup(){
+  const list = document.getElementById('lineupList');
+  if(state.meals.length === 0){
+    list.innerHTML = '<div class="empty-state">Nothing logged yet today.</div>';
+    return;
+  }
+  const sorted = [...state.meals].sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+  list.innerHTML = sorted.map(m=>`
+    <div class="lineup-row">
+      <div class="time mono">${m.time}</div>
+      <div class="name">${m.name}</div>
+      <div class="macros">${Math.round(m.calories)} cal &middot; P${Math.round(m.protein)} C${Math.round(m.carbs)} F${Math.round(m.fat)}</div>
+      <button class="del" onclick="deleteMeal('${m.id}')">&times;</button>
+    </div>
+  `).join('');
+}
+
+function saveMeals(){
+  const ok = lsSet('meals:'+todayKey(), JSON.stringify(state.meals));
+  if(!ok) showToast('Could not save &mdash; storage may be full');
+}
+function deleteMeal(id){
+  state.meals = state.meals.filter(m=>m.id!==id);
+  saveMeals();
+  renderAll();
+}
+
+function addManualMeal(){
+  const name = document.getElementById('manName').value.trim() || 'Meal';
+  const time = document.getElementById('manTime').value || nowTime();
+  const protein = Number(document.getElementById('manProtein').value)||0;
+  const carbs = Number(document.getElementById('manCarbs').value)||0;
+  const fat = Number(document.getElementById('manFat').value)||0;
+  let calories = Number(document.getElementById('manCal').value);
+  if(!calories){ calories = protein*4 + carbs*4 + fat*9; }
+
+  state.meals.push({id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'manual'});
+  saveMeals();
+  renderAll();
+  document.getElementById('manName').value='';
+  document.getElementById('manCal').value='';
+  document.getElementById('manProtein').value=0;
+  document.getElementById('manCarbs').value=0;
+  document.getElementById('manFat').value=0;
+  document.getElementById('manTime').value = nowTime();
+  showToast('Meal logged');
+}
+
+let scannerStream = null;
+let scannerLoopId = null;
+let barcodeDetector = null;
+
+function startScanner(){
+  if(!('BarcodeDetector' in window)){
+    document.getElementById('scannerNote').textContent = "Camera scanning isn't supported in this browser \u2014 use the barcode number field below instead.";
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(stream=>{
+      scannerStream = stream;
+      const video = document.getElementById('scannerVideo');
+      video.srcObject = stream;
+      video.play();
+      document.getElementById('scannerArea').style.display = 'block';
+      document.getElementById('startScanBtn').style.display = 'none';
+      barcodeDetector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
+      scanLoop(video);
+    })
+    .catch(()=>{
+      document.getElementById('scannerNote').textContent = "Couldn't get camera access \u2014 use the barcode number field below instead.";
+    });
+}
+function scanLoop(video){
+  if(!scannerStream) return;
+  barcodeDetector.detect(video)
+    .then(codes=>{
+      if(codes && codes.length>0){
+        document.getElementById('barcodeInput').value = codes[0].rawValue;
+        stopScanner();
+        lookupBarcode();
+      } else {
+        scannerLoopId = requestAnimationFrame(()=>scanLoop(video));
+      }
+    })
+    .catch(()=>{ scannerLoopId = requestAnimationFrame(()=>scanLoop(video)); });
+}
+function stopScanner(){
+  if(scannerLoopId) cancelAnimationFrame(scannerLoopId);
+  scannerLoopId = null;
+  if(scannerStream){ scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
+  document.getElementById('scannerArea').style.display = 'none';
+  document.getElementById('startScanBtn').style.display = 'block';
+}
+
+async function lookupBarcode(){
+  const code = document.getElementById('barcodeInput').value.trim();
+  if(!code){ showToast('Enter a barcode number first'); return; }
+  document.getElementById('barcodeLoading').style.display = 'block';
+  document.getElementById('barcodeResults').innerHTML = '';
+  try{
+    const res = await fetch('https://world.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json');
+    const data = await res.json();
+    if(data.status !== 1 || !data.product){
+      document.getElementById('barcodeResults').innerHTML = '<p class="small-note">No match found \u2014 try manual entry instead.</p>';
+      return;
+    }
+    const p = data.product;
+    const n = p.nutriments || {};
+    const per100 = {
+      protein: Number(n.proteins_100g)||0,
+      carbs: Number(n.carbohydrates_100g)||0,
+      fat: Number(n.fat_100g)||0,
+      calories: Number(n['energy-kcal_100g'])||0
+    };
+    renderBarcodeResult(p.product_name || 'Unknown product', p.brands || '', per100);
+  } catch(err){
+    document.getElementById('barcodeResults').innerHTML = '<p class="small-note">Could not look that up \u2014 check your connection or try manual entry.</p>';
+  } finally {
+    document.getElementById('barcodeLoading').style.display = 'none';
+  }
+}
+
+function renderBarcodeResult(name, brand, per100){
+  const html = `
+    <div class="analysis-item">
+      <div class="field"><label>Product</label><input type="text" id="bcName" value="${(name+(brand?' ('+brand+')':'')).replace(/"/g,'&quot;')}"></div>
+      <div class="row2">
+        <div class="field"><label>Grams eaten</label><input type="number" id="bcGrams" value="100" oninput="rescaleBarcode()"></div>
+        <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
+      </div>
+      <div class="row4">
+        <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="${per100.protein.toFixed(1)}"></div>
+        <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="${per100.carbs.toFixed(1)}"></div>
+        <div class="field"><label>Fat (g)</label><input type="number" id="bcFat" value="${per100.fat.toFixed(1)}"></div>
+        <div class="field"><label>Calories</label><input type="number" id="bcCal" value="${Math.round(per100.calories)}"></div>
+      </div>
+      <p class="small-note">Values shown are for 100g by default \u2014 update grams eaten to rescale, or edit directly.</p>
+      <button class="btn" onclick="confirmBarcode()">Add to log</button>
+    </div>
+  `;
+  document.getElementById('barcodeResults').innerHTML = html;
+  document.getElementById('barcodeResults').dataset.per100 = JSON.stringify(per100);
+}
+function rescaleBarcode(){
+  const per100 = JSON.parse(document.getElementById('barcodeResults').dataset.per100 || '{}');
+  const grams = Number(document.getElementById('bcGrams').value)||0;
+  const factor = grams/100;
+  document.getElementById('bcProtein').value = ((per100.protein||0)*factor).toFixed(1);
+  document.getElementById('bcCarbs').value = ((per100.carbs||0)*factor).toFixed(1);
+  document.getElementById('bcFat').value = ((per100.fat||0)*factor).toFixed(1);
+  document.getElementById('bcCal').value = Math.round((per100.calories||0)*factor);
+}
+function confirmBarcode(){
+  const name = document.getElementById('bcName').value.trim() || 'Packaged food';
+  const time = document.getElementById('bcTime').value || nowTime();
+  const protein = Number(document.getElementById('bcProtein').value)||0;
+  const carbs = Number(document.getElementById('bcCarbs').value)||0;
+  const fat = Number(document.getElementById('bcFat').value)||0;
+  const calories = Number(document.getElementById('bcCal').value)||0;
+
+  state.meals.push({id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'barcode'});
+  saveMeals();
+  renderAll();
+  document.getElementById('barcodeResults').innerHTML = '';
+  document.getElementById('barcodeInput').value = '';
+  showToast('Meal logged');
+}
+
+function switchTab(tab){
+  ['Log','Today','History'].forEach(t=>{
+    document.getElementById('panel'+t).classList.toggle('active', t.toLowerCase()===tab);
+    document.getElementById('tab'+t+'Btn').classList.toggle('active', t.toLowerCase()===tab);
+  });
+  if(tab==='history') loadHistory();
+}
+function switchSub(sub){
+  document.getElementById('subManual').style.display = sub==='manual' ? 'block':'none';
+  document.getElementById('subBarcode').style.display = sub==='barcode' ? 'block':'none';
+  document.getElementById('subManualBtn').classList.toggle('active', sub==='manual');
+  document.getElementById('subBarcodeBtn').classList.toggle('active', sub==='barcode');
+  if(sub!=='barcode') stopScanner();
+}
+
+function setPhase(phase){
+  state.phase = phase;
+  state.targets = DEFAULT_TARGETS[phase];
+  persistSettings();
+  updatePhaseButtons();
+  renderScoreboard();
+}
+function updatePhaseButtons(){
+  document.getElementById('phase1Btn').classList.toggle('active', state.phase==='phase1');
+  document.getElementById('phase2Btn').classList.toggle('active', state.phase==='phase2');
+}
+function persistSettings(){
+  const ok = lsSet('settings:targets', JSON.stringify({phase:state.phase, targets:state.targets}));
+  if(!ok) showToast('Could not save settings');
+}
+
+function openSettings(){
+  document.getElementById('setCal').value = state.targets.calories;
+  document.getElementById('setProtein').value = state.targets.protein;
+  document.getElementById('setCarbs').value = state.targets.carbs;
+  document.getElementById('setFat').value = state.targets.fat;
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsModal').classList.remove('open'); }
+function saveSettings(){
+  state.targets = {
+    calories: Number(document.getElementById('setCal').value)||state.targets.calories,
+    protein: Number(document.getElementById('setProtein').value)||state.targets.protein,
+    carbs: Number(document.getElementById('setCarbs').value)||state.targets.carbs,
+    fat: Number(document.getElementById('setFat').value)||state.targets.fat
+  };
+  persistSettings();
+  renderScoreboard();
+  closeSettings();
+  showToast('Targets updated');
+}
+
+function loadHistory(){
+  const list = document.getElementById('historyList');
+  const keys = lsListPrefix('meals:');
+  if(!keys.length){ list.innerHTML = '<div class="empty-state">No history yet.</div>'; return; }
+  const dates = keys.map(k=>k.replace('meals:','')).sort().reverse().slice(0,30);
+  const rows = [];
+  dates.forEach(d=>{
+    if(d === todayKey()) return;
+    try{
+      const meals = JSON.parse(lsGet('meals:'+d) || '[]');
+      const totals = meals.reduce((acc,m)=>{acc.p+=Number(m.protein)||0; acc.c+=Number(m.calories)||0; return acc;},{p:0,c:0});
+      rows.push(`<div class="hist-row"><span>${d}</span><span>${meals.length} meals &middot; P${Math.round(totals.p)}g &middot; ${Math.round(totals.c)} cal</span></div>`);
+    } catch(e){}
+  });
+  list.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">No history yet.</div>';
+}
+
+function exportData(){
+  const dump = {};
+  lsListPrefix('meals:').forEach(k=> dump[k] = lsGet(k));
+  const settings = lsGet('settings:targets');
+  if(settings) dump['settings:targets'] = settings;
+  const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'recovery-log-backup-'+todayKey()+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+}
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const dump = JSON.parse(reader.result);
+      Object.keys(dump).forEach(k=> lsSet(k, dump[k]));
+      showToast('Backup restored \u2014 reloading');
+      setTimeout(()=>location.reload(), 800);
+    } catch(e){ showToast('Could not read that backup file'); }
+  };
+  reader.readAsText(file);
+}
+
+init();
+</script>
+</body>
+</html>
