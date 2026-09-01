@@ -17,6 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
   :root{
     --bg:#FBF8F2;
@@ -193,7 +194,7 @@
     <div id="subBarcode" style="display:none;">
       <div class="card">
         <div id="scannerArea" style="display:none;">
-          <video id="scannerVideo" playsinline muted style="width:100%; border-radius:6px; background:#000;"></video>
+          <div id="scannerViewport" style="width:100%; border-radius:6px; overflow:hidden; background:#000; position:relative;"></div>
           <button class="btn secondary" style="width:100%; margin-top:8px;" onclick="stopScanner()">Stop camera</button>
         </div>
         <button class="btn" id="startScanBtn" style="width:100%;" onclick="startScanner()">Scan with camera</button>
@@ -417,48 +418,50 @@ function addManualMeal(){
   showToast('Meal logged');
 }
 
-let scannerStream = null;
-let scannerLoopId = null;
-let barcodeDetector = null;
+let scannerRunning = false;
 
 function startScanner(){
-  if(!('BarcodeDetector' in window)){
-    document.getElementById('scannerNote').textContent = "Camera scanning isn't supported in this browser \u2014 use the barcode number field below instead.";
+  if(typeof Quagga === 'undefined'){
+    document.getElementById('scannerNote').textContent = "Camera scanner library didn't load \u2014 use the barcode number field below instead.";
     return;
   }
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-    .then(stream=>{
-      scannerStream = stream;
-      const video = document.getElementById('scannerVideo');
-      video.srcObject = stream;
-      video.play();
-      document.getElementById('scannerArea').style.display = 'block';
-      document.getElementById('startScanBtn').style.display = 'none';
-      barcodeDetector = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128']});
-      scanLoop(video);
-    })
-    .catch(()=>{
-      document.getElementById('scannerNote').textContent = "Couldn't get camera access \u2014 use the barcode number field below instead.";
-    });
+  document.getElementById('scannerArea').style.display = 'block';
+  document.getElementById('startScanBtn').style.display = 'none';
+
+  Quagga.init({
+    inputStream: {
+      type: "LiveStream",
+      target: document.getElementById('scannerViewport'),
+      constraints: { facingMode: "environment" }
+    },
+    locate: true,
+    decoder: { readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader"] }
+  }, function(err){
+    if(err){
+      document.getElementById('scannerNote').textContent = "Couldn't start the camera \u2014 use the barcode number field below instead.";
+      document.getElementById('scannerArea').style.display = 'none';
+      document.getElementById('startScanBtn').style.display = 'block';
+      return;
+    }
+    scannerRunning = true;
+    Quagga.start();
+    Quagga.onDetected(onBarcodeDetected);
+  });
 }
-function scanLoop(video){
-  if(!scannerStream) return;
-  barcodeDetector.detect(video)
-    .then(codes=>{
-      if(codes && codes.length>0){
-        document.getElementById('barcodeInput').value = codes[0].rawValue;
-        stopScanner();
-        lookupBarcode();
-      } else {
-        scannerLoopId = requestAnimationFrame(()=>scanLoop(video));
-      }
-    })
-    .catch(()=>{ scannerLoopId = requestAnimationFrame(()=>scanLoop(video)); });
+
+function onBarcodeDetected(result){
+  const code = result && result.codeResult ? result.codeResult.code : null;
+  if(!code) return;
+  document.getElementById('barcodeInput').value = code;
+  stopScanner();
+  lookupBarcode();
 }
+
 function stopScanner(){
-  if(scannerLoopId) cancelAnimationFrame(scannerLoopId);
-  scannerLoopId = null;
-  if(scannerStream){ scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
+  if(scannerRunning){
+    try{ Quagga.offDetected(onBarcodeDetected); Quagga.stop(); } catch(e){}
+    scannerRunning = false;
+  }
   document.getElementById('scannerArea').style.display = 'none';
   document.getElementById('startScanBtn').style.display = 'block';
 }
