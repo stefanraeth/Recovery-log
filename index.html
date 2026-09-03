@@ -16,121 +16,160 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Recovery Log","short_name":"Recovery Log","start_url":".","display":"standalone","background_color":"%23FBF8F2","theme_color":"%2316233F","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%2316233F\'/%3E%3Ctext x=\'50\' y=\'63\' font-family=\'Georgia,serif\' font-size=\'42\' font-weight=\'bold\' fill=\'%23C99A2E\' text-anchor=\'middle\'%3ERL%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <style>
-  :root{
-    --bg:#FBF8F2;
+  :root, html[data-theme="light"]{
+    --bg:#FFF8F0;
     --surface:#FFFFFF;
-    --ink:#16233F;
-    --ink-soft:#4A5A7B;
-    --line:#DCD3C0;
-    --gold:#C99A2E;
-    --teal:#2F5D62;
-    --good:#3E7A57;
-    --warn:#B4562B;
+    --surface-alt:#FFF1E2;
+    --ink:#4A372C;
+    --ink-soft:#9C8778;
+    --line:#F3E1CC;
+    --primary:#FF6F4C;
+    --primary-soft:#FFE3D9;
+    --secondary:#FFC857;
+    --good:#3FAE8A;
+    --warn:#EF5F76;
+    --shadow:0 4px 14px rgba(74,55,38,0.08);
+  }
+  html[data-theme="dark"]{
+    --bg:#2B241D;
+    --surface:#3A322A;
+    --surface-alt:#443A2F;
+    --ink:#F7ECDD;
+    --ink-soft:#C9B6A4;
+    --line:#544736;
+    --primary:#FF8963;
+    --primary-soft:#5A3C30;
+    --secondary:#FFD873;
+    --good:#63C7A2;
+    --warn:#FF8FA0;
+    --shadow:0 4px 14px rgba(0,0,0,0.3);
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:var(--bg);
     color:var(--ink);
-    font-family:'Source Serif 4', serif;
+    font-family:'Nunito', sans-serif;
     padding-bottom:60px;
+    transition:background 0.2s, color 0.2s;
   }
-  .display{font-family:'Big Shoulders Display', sans-serif; font-weight:800; letter-spacing:0.01em;}
-  .mono{font-family:'IBM Plex Mono', monospace;}
+  .display{font-family:'Baloo 2', sans-serif; font-weight:800; letter-spacing:0.01em;}
+  .mono{font-family:'Nunito', sans-serif; font-weight:700;}
 
   header{
-    padding:28px 20px 18px;
-    border-bottom:3px solid var(--ink);
+    padding:24px 20px 16px;
     display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:14px;
   }
-  header h1{font-size:2.4rem; margin:0; line-height:0.9; text-transform:uppercase;}
-  header p{margin:4px 0 0; color:var(--ink-soft); font-size:0.95rem;}
-  .phase-toggle{display:flex; gap:0; border:2px solid var(--ink); border-radius:3px; overflow:hidden;}
+  header h1{font-size:2.2rem; margin:0; line-height:1;}
+  header p{margin:4px 0 0; color:var(--ink-soft); font-size:0.95rem; font-weight:600;}
+  .header-controls{display:flex; gap:8px; align-items:center;}
+  .phase-toggle{display:flex; gap:4px; background:var(--surface-alt); border-radius:20px; padding:4px;}
   .phase-toggle button{
-    font-family:'IBM Plex Mono', monospace; font-size:0.8rem; padding:8px 14px; border:none;
-    background:var(--surface); color:var(--ink); cursor:pointer; letter-spacing:0.05em;
+    font-family:'Nunito', sans-serif; font-weight:700; font-size:0.75rem; padding:7px 14px; border:none;
+    background:transparent; color:var(--ink-soft); cursor:pointer; border-radius:16px; letter-spacing:0.02em;
   }
-  .phase-toggle button.active{background:var(--ink); color:var(--bg);}
-  .gear{background:none; border:2px solid var(--ink); border-radius:3px; width:38px; height:38px; cursor:pointer; font-size:1rem;}
+  .phase-toggle button.active{background:var(--primary); color:#fff;}
+  .gear, .theme-toggle{background:var(--surface-alt); border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:1.1rem;}
 
-  .scoreboard{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--ink); margin:0;}
-  .score-block{background:var(--surface); padding:14px 16px;}
-  .score-block .label{font-family:'IBM Plex Mono'; font-size:0.7rem; letter-spacing:0.1em; color:var(--ink-soft);}
-  .score-block .nums{font-family:'IBM Plex Mono'; font-size:1.15rem; margin-top:4px;}
-  .score-block .nums .target{color:var(--ink-soft); font-size:0.85rem;}
-  .bar-track{height:6px; background:var(--line); margin-top:8px; border-radius:3px; overflow:hidden;}
-  .bar-fill{height:100%; background:var(--teal); transition:width 0.3s;}
-  .bar-fill.over{background:var(--gold);}
+  .week-wrap{padding:12px 20px 4px;}
+  .week-wrap h3{font-family:'Nunito'; font-weight:700; font-size:0.72rem; letter-spacing:0.06em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
+  .week-strip{display:flex; gap:8px;}
+  .week-card{flex:1; text-align:center; border:none; border-radius:14px; padding:10px 4px; background:var(--surface); box-shadow:var(--shadow);}
+  .week-card.clickable{cursor:pointer;}
+  .week-card.today{box-shadow:0 0 0 2px var(--primary), var(--shadow);}
+  .week-card .day-label{font-family:'Nunito'; font-weight:700; font-size:0.65rem; color:var(--ink-soft);}
+  .week-card .mini-bar-track{height:36px; width:10px; background:var(--surface-alt); margin:6px auto 4px; border-radius:5px; overflow:hidden; display:flex; align-items:flex-end;}
+  .week-card .mini-bar-fill{width:100%; background:var(--good); border-radius:5px;}
+  .week-card .mini-bar-fill.over{background:var(--secondary);}
+  .week-card .mini-label{font-family:'Nunito'; font-weight:700; font-size:0.62rem; color:var(--ink-soft);}
 
-  .timeline-wrap{padding:18px 20px 20px; border-bottom:1px solid var(--line);}
-  .timeline-wrap h3{font-family:'IBM Plex Mono'; font-size:0.75rem; letter-spacing:0.1em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
-  .timeline-track{position:relative; height:54px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-top:6px;}
+  .scoreboard{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:14px 20px; background:transparent;}
+  .score-block{background:var(--surface); padding:14px 14px; border-radius:14px; box-shadow:var(--shadow);}
+  .score-block .label{font-family:'Nunito'; font-weight:700; font-size:0.68rem; letter-spacing:0.06em; color:var(--ink-soft);}
+  .score-block .nums{font-family:'Nunito'; font-weight:800; font-size:1.1rem; margin-top:4px;}
+  .score-block .nums .target{color:var(--ink-soft); font-size:0.8rem; font-weight:600;}
+  .bar-track{height:7px; background:var(--surface-alt); margin-top:8px; border-radius:4px; overflow:hidden;}
+  .bar-fill{height:100%; background:var(--good); border-radius:4px; transition:width 0.3s;}
+  .bar-fill.over{background:var(--secondary);}
+
+  .timeline-wrap{padding:16px 20px 20px;}
+  .timeline-wrap h3{font-family:'Nunito'; font-weight:700; font-size:0.72rem; letter-spacing:0.06em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
+  .timeline-track{position:relative; height:54px; background:var(--surface); border-radius:14px; margin-top:6px; box-shadow:var(--shadow);}
   .tl-tick{position:absolute; top:0; bottom:0; width:1px; background:var(--line);}
-  .tl-tick span{position:absolute; bottom:-20px; left:-14px; font-family:'IBM Plex Mono'; font-size:0.65rem; color:var(--ink-soft); width:30px; text-align:center;}
-  .tl-dot{position:absolute; top:18px; width:16px; height:16px; border-radius:50%; border:2px solid var(--ink); transform:translateX(-50%);}
+  .tl-tick span{position:absolute; bottom:-20px; left:-14px; font-family:'Nunito'; font-weight:700; font-size:0.62rem; color:var(--ink-soft); width:30px; text-align:center;}
+  .tl-dot{position:absolute; top:18px; width:16px; height:16px; border-radius:50%; border:2px solid var(--surface); transform:translateX(-50%); box-shadow:var(--shadow);}
   .tl-dot.good{background:var(--good);}
   .tl-dot.warn{background:var(--warn);}
-  .tl-empty{color:var(--ink-soft); font-size:0.85rem; padding:14px 0;}
+  .tl-empty{color:var(--ink-soft); font-size:0.85rem; padding:18px 14px;}
 
-  nav.tabs{display:flex; border-bottom:2px solid var(--ink); margin:0 20px;}
-  nav.tabs button{
-    flex:1; background:none; border:none; padding:12px 8px; font-family:'IBM Plex Mono'; font-size:0.8rem;
-    letter-spacing:0.06em; color:var(--ink-soft); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;
+  .home-actions{display:flex; flex-direction:column; gap:10px; padding:6px 20px 24px;}
+  .action-card{
+    display:flex; align-items:center; gap:14px; padding:18px 18px; background:var(--surface); border:none; border-radius:16px;
+    box-shadow:var(--shadow); cursor:pointer; font-family:'Nunito'; font-weight:800; font-size:1.05rem; color:var(--ink); text-align:left;
   }
-  nav.tabs button.active{color:var(--ink); border-bottom-color:var(--gold); font-weight:600;}
+  .action-card .action-emoji{font-size:1.7rem;}
+  .action-card:active{transform:scale(0.98);}
 
-  main{padding:20px;}
+  .back-bar{padding:16px 20px 0;}
+  .back-btn{
+    background:var(--surface-alt); border:none; border-radius:20px; padding:9px 18px; font-family:'Nunito'; font-weight:800;
+    font-size:0.85rem; color:var(--ink); cursor:pointer;
+  }
+
+  main{padding:16px 20px 20px;}
   .panel{display:none;}
   .panel.active{display:block;}
 
   .subtabs{display:flex; gap:8px; margin-bottom:16px;}
   .subtabs button{
-    font-family:'IBM Plex Mono'; font-size:0.75rem; padding:6px 12px; border:1px solid var(--ink);
-    background:var(--surface); border-radius:20px; cursor:pointer; color:var(--ink);
+    font-family:'Nunito'; font-weight:700; font-size:0.75rem; padding:7px 14px; border:none;
+    background:var(--surface-alt); border-radius:20px; cursor:pointer; color:var(--ink-soft);
   }
-  .subtabs button.active{background:var(--ink); color:var(--bg);}
+  .subtabs button.active{background:var(--primary); color:#fff;}
 
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:14px;}
+  .card{background:var(--surface); border:none; border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:var(--shadow);}
   .field{margin-bottom:12px;}
-  .field label{display:block; font-family:'IBM Plex Mono'; font-size:0.7rem; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase;}
+  .field label{display:block; font-family:'Nunito'; font-weight:700; font-size:0.68rem; letter-spacing:0.03em; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase;}
   .field input, .field select{
-    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'Source Serif 4';
+    width:100%; padding:10px 12px; border:2px solid var(--line); border-radius:10px; font-family:'Nunito';
     font-size:0.95rem; background:var(--bg); color:var(--ink);
   }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--primary);}
   .row4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 
   .btn{
-    font-family:'IBM Plex Mono'; font-size:0.8rem; letter-spacing:0.04em; padding:10px 18px; border-radius:4px;
-    border:2px solid var(--ink); background:var(--ink); color:var(--bg); cursor:pointer;
+    font-family:'Nunito'; font-weight:800; font-size:0.85rem; letter-spacing:0.01em; padding:11px 20px; border-radius:24px;
+    border:none; background:var(--primary); color:#fff; cursor:pointer; box-shadow:var(--shadow);
   }
-  .btn.secondary{background:var(--surface); color:var(--ink);}
+  .btn.secondary{background:var(--surface-alt); color:var(--ink); box-shadow:none;}
   .btn:disabled{opacity:0.5; cursor:default;}
 
-  .small-note{font-size:0.78rem; color:var(--ink-soft); margin-top:6px;}
-  .analysis-item{border-top:1px solid var(--line); padding-top:10px; margin-top:10px;}
+  .small-note{font-size:0.78rem; color:var(--ink-soft); margin-top:6px; font-weight:600;}
+  .analysis-item{border-top:2px solid var(--line); padding-top:10px; margin-top:10px;}
 
-  .lineup-row{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
-  .lineup-row .time{font-family:'IBM Plex Mono'; font-size:0.8rem; color:var(--ink-soft); width:56px; flex-shrink:0;}
-  .lineup-row .name{flex:1;}
-  .lineup-row .macros{font-family:'IBM Plex Mono'; font-size:0.78rem; color:var(--ink-soft); text-align:right; width:150px;}
-  .lineup-row .del{background:none; border:none; color:var(--warn); font-size:1.2rem; cursor:pointer; width:24px;}
+  .lineup-row{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:2px solid var(--line);}
+  .lineup-row .time{font-family:'Nunito'; font-weight:700; font-size:0.8rem; color:var(--ink-soft); width:56px; flex-shrink:0;}
+  .lineup-row .name{flex:1; font-weight:600;}
+  .lineup-row .macros{font-family:'Nunito'; font-weight:700; font-size:0.78rem; color:var(--ink-soft); text-align:right; width:150px;}
+  .lineup-row .del{background:none; border:none; color:var(--warn); font-size:1.3rem; cursor:pointer; width:24px;}
 
-  .hist-row{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono'; font-size:0.85rem;}
+  .hist-row{display:flex; justify-content:space-between; padding:12px 4px; border-bottom:2px solid var(--line); font-family:'Nunito'; font-weight:700; font-size:0.85rem; border-radius:8px;}
 
-  .modal-bg{display:none; position:fixed; inset:0; background:rgba(22,35,63,0.5); z-index:10; align-items:center; justify-content:center;}
+  .modal-bg{display:none; position:fixed; inset:0; background:rgba(74,55,38,0.45); z-index:10; align-items:center; justify-content:center;}
   .modal-bg.open{display:flex;}
-  .modal{background:var(--surface); border-radius:8px; padding:24px; width:90%; max-width:420px; max-height:85vh; overflow-y:auto;}
-  .modal h2{font-family:'Big Shoulders Display'; margin-top:0;}
-  .modal hr{border:none; border-top:1px solid var(--line); margin:16px 0;}
+  .modal{background:var(--surface); border-radius:20px; padding:24px; width:90%; max-width:420px; max-height:85vh; overflow-y:auto; box-shadow:var(--shadow);}
+  .modal h2{font-family:'Baloo 2'; margin-top:0; color:var(--primary);}
+  .modal hr{border:none; border-top:2px solid var(--line); margin:16px 0;}
 
-  .empty-state{color:var(--ink-soft); font-size:0.9rem; padding:20px 0; text-align:center;}
+  .empty-state{color:var(--ink-soft); font-size:0.9rem; padding:20px 0; text-align:center; font-weight:600;}
   .toast{
-    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg);
-    padding:10px 18px; border-radius:6px; font-family:'IBM Plex Mono'; font-size:0.8rem; opacity:0; transition:opacity 0.3s; pointer-events:none;
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff;
+    padding:11px 20px; border-radius:24px; font-family:'Nunito'; font-weight:700; font-size:0.8rem; opacity:0; transition:opacity 0.3s; pointer-events:none;
+    box-shadow:var(--shadow);
   }
   .toast.show{opacity:1;}
 </style>
@@ -139,32 +178,44 @@
 
 <header>
   <div>
-    <h1 class="display">Recovery Log</h1>
+    <h1 class="display">🍎 Recovery Log</h1>
     <p>Nutrition tracker &mdash; today, <span id="todayLabel"></span></p>
   </div>
-  <div style="display:flex; gap:10px; align-items:center;">
+  <div class="header-controls">
     <div class="phase-toggle">
       <button id="phase1Btn" onclick="setPhase('phase1')">PHASE 1</button>
       <button id="phase2Btn" onclick="setPhase('phase2')">PHASE 2</button>
     </div>
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
     <button class="gear" onclick="openSettings()" title="Settings">&#9881;</button>
   </div>
 </header>
 
-<div class="scoreboard" id="scoreboard"></div>
+<div id="homeScreen">
+  <div class="week-wrap">
+    <h3>This week &mdash; tap a past day to view or copy it</h3>
+    <div class="week-strip" id="weekStrip"></div>
+  </div>
 
-<div class="timeline-wrap">
-  <h3>Meal spacing today &mdash; aim for a hit every 3&ndash;4 hrs, not one big feed at night</h3>
-  <div class="timeline-track" id="timelineTrack"></div>
+  <div class="scoreboard" id="scoreboard"></div>
+
+  <div class="timeline-wrap">
+    <h3>Meal spacing today &mdash; aim for a hit every 3&ndash;4 hrs, not one big feed at night</h3>
+    <div class="timeline-track" id="timelineTrack"></div>
+  </div>
+
+  <div class="home-actions">
+    <button class="action-card" onclick="showScreen('log')"><span class="action-emoji">📝</span><span>Log a Meal</span></button>
+    <button class="action-card" onclick="showScreen('today')"><span class="action-emoji">📋</span><span>Today's Log</span></button>
+    <button class="action-card" onclick="showScreen('history')"><span class="action-emoji">📅</span><span>History</span></button>
+  </div>
 </div>
 
-<nav class="tabs">
-  <button id="tabLogBtn" class="active" onclick="switchTab('log')">LOG MEAL</button>
-  <button id="tabTodayBtn" onclick="switchTab('today')">TODAY</button>
-  <button id="tabHistBtn" onclick="switchTab('history')">HISTORY</button>
-</nav>
-
-<main>
+<div id="subScreens" style="display:none;">
+  <div class="back-bar">
+    <button class="back-btn" onclick="showScreen('home')">&larr; Back</button>
+  </div>
+  <main>
   <!-- LOG PANEL -->
   <div class="panel active" id="panelLog">
     <div class="subtabs">
@@ -219,7 +270,20 @@
   <div class="panel" id="panelHistory">
     <div class="card" id="historyCard"><div id="historyList"></div></div>
   </div>
-</main>
+  </main>
+</div>
+
+<div class="modal-bg" id="dayDetailModal">
+  <div class="modal">
+    <h2 id="dayDetailTitle">Day</h2>
+    <div id="dayDetailSelectAll"></div>
+    <div id="dayDetailList"></div>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn" onclick="copySelectedToToday()">Copy selected to today</button>
+      <button class="btn secondary" onclick="closeDayDetail()">Close</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-bg" id="settingsModal">
   <div class="modal">
@@ -264,6 +328,16 @@ function lsListPrefix(prefix){
   return keys;
 }
 
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme==='dark' ? '☀️' : '🌙';
+  lsSet('settings:theme', theme);
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current==='dark' ? 'light' : 'dark');
+}
+
 function todayKey(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -279,6 +353,9 @@ function showToast(msg){
 }
 
 function init(){
+  const savedTheme = lsGet('settings:theme') || 'light';
+  applyTheme(savedTheme);
+
   document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
   document.getElementById('manTime').value = nowTime();
 
@@ -301,7 +378,7 @@ function init(){
   loadHistory();
 }
 
-function renderAll(){ renderScoreboard(); renderTimeline(); renderLineup(); }
+function renderAll(){ renderScoreboard(); renderTimeline(); renderLineup(); renderWeekStrip(); }
 
 function renderScoreboard(){
   const totals = state.meals.reduce((acc,m)=>{
@@ -419,14 +496,17 @@ function addManualMeal(){
 }
 
 let scannerRunning = false;
+let detectionHistory = [];
 
 function startScanner(){
   if(typeof Quagga === 'undefined'){
     document.getElementById('scannerNote').textContent = "Camera scanner library didn't load \u2014 use the barcode number field below instead.";
     return;
   }
+  detectionHistory = [];
   document.getElementById('scannerArea').style.display = 'block';
   document.getElementById('startScanBtn').style.display = 'none';
+  document.getElementById('scannerNote').textContent = 'Hold the barcode steady and well-lit \u2014 confirming over a few frames to avoid misreads.';
 
   Quagga.init({
     inputStream: {
@@ -435,7 +515,7 @@ function startScanner(){
       constraints: { facingMode: "environment" }
     },
     locate: true,
-    decoder: { readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader","code_128_reader"] }
+    decoder: { readers: ["ean_reader","ean_8_reader","upc_reader","upc_e_reader"] }
   }, function(err){
     if(err){
       document.getElementById('scannerNote').textContent = "Couldn't start the camera \u2014 use the barcode number field below instead.";
@@ -452,9 +532,18 @@ function startScanner(){
 function onBarcodeDetected(result){
   const code = result && result.codeResult ? result.codeResult.code : null;
   if(!code) return;
-  document.getElementById('barcodeInput').value = code;
-  stopScanner();
-  lookupBarcode();
+  detectionHistory.push(code);
+  if(detectionHistory.length > 6) detectionHistory.shift();
+  const counts = {};
+  detectionHistory.forEach(c=> counts[c] = (counts[c]||0)+1);
+  const ranked = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const [bestCode, bestCount] = ranked[0];
+  if(bestCount >= 3){
+    document.getElementById('barcodeInput').value = bestCode;
+    detectionHistory = [];
+    stopScanner();
+    lookupBarcode();
+  }
 }
 
 function stopScanner(){
@@ -462,6 +551,7 @@ function stopScanner(){
     try{ Quagga.offDetected(onBarcodeDetected); Quagga.stop(); } catch(e){}
     scannerRunning = false;
   }
+  detectionHistory = [];
   document.getElementById('scannerArea').style.display = 'none';
   document.getElementById('startScanBtn').style.display = 'block';
 }
@@ -475,7 +565,7 @@ async function lookupBarcode(){
     const res = await fetch('https://world.openfoodfacts.org/api/v0/product/'+encodeURIComponent(code)+'.json');
     const data = await res.json();
     if(data.status !== 1 || !data.product){
-      document.getElementById('barcodeResults').innerHTML = '<p class="small-note">No match found \u2014 try manual entry instead.</p>';
+      renderBarcodeNotFound(code);
       return;
     }
     const p = data.product;
@@ -492,6 +582,26 @@ async function lookupBarcode(){
   } finally {
     document.getElementById('barcodeLoading').style.display = 'none';
   }
+}
+
+function renderBarcodeNotFound(code){
+  const html = `
+    <div class="analysis-item">
+      <p class="small-note">No database match for barcode ${code} \u2014 enter it manually below (check the package label).</p>
+      <div class="field"><label>Product</label><input type="text" id="bcName" value="Packaged food"></div>
+      <div class="row2">
+        <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
+        <div class="field"><label>Calories</label><input type="number" id="bcCal" value="0"></div>
+      </div>
+      <div class="row4">
+        <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="0"></div>
+        <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="0"></div>
+        <div class="field"><label>Fat (g)</label><input type="number" id="bcFat" value="0"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="confirmBarcode()">Add to log</button></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('barcodeResults').innerHTML = html;
 }
 
 function renderBarcodeResult(name, brand, per100){
@@ -540,12 +650,21 @@ function confirmBarcode(){
   showToast('Meal logged');
 }
 
-function switchTab(tab){
+function showScreen(screen){
+  const home = document.getElementById('homeScreen');
+  const sub = document.getElementById('subScreens');
+  if(screen === 'home'){
+    home.style.display = 'block';
+    sub.style.display = 'none';
+    return;
+  }
+  home.style.display = 'none';
+  sub.style.display = 'block';
   ['Log','Today','History'].forEach(t=>{
-    document.getElementById('panel'+t).classList.toggle('active', t.toLowerCase()===tab);
-    document.getElementById('tab'+t+'Btn').classList.toggle('active', t.toLowerCase()===tab);
+    document.getElementById('panel'+t).classList.toggle('active', t.toLowerCase()===screen);
   });
-  if(tab==='history') loadHistory();
+  if(screen === 'history') loadHistory();
+  window.scrollTo(0,0);
 }
 function switchSub(sub){
   document.getElementById('subManual').style.display = sub==='manual' ? 'block':'none';
@@ -603,10 +722,106 @@ function loadHistory(){
     try{
       const meals = JSON.parse(lsGet('meals:'+d) || '[]');
       const totals = meals.reduce((acc,m)=>{acc.p+=Number(m.protein)||0; acc.c+=Number(m.calories)||0; return acc;},{p:0,c:0});
-      rows.push(`<div class="hist-row"><span>${d}</span><span>${meals.length} meals &middot; P${Math.round(totals.p)}g &middot; ${Math.round(totals.c)} cal</span></div>`);
+      rows.push(`<div class="hist-row" style="cursor:pointer;" onclick="openDayDetail('${d}')"><span>${d}</span><span>${meals.length} meals &middot; P${Math.round(totals.p)}g &middot; ${Math.round(totals.c)} cal</span></div>`);
     } catch(e){}
   });
   list.innerHTML = rows.length ? rows.join('') : '<div class="empty-state">No history yet.</div>';
+}
+
+function getMealsForDate(dateKey){
+  try{ return JSON.parse(lsGet('meals:'+dateKey) || '[]'); } catch(e){ return []; }
+}
+
+function renderWeekStrip(){
+  const strip = document.getElementById('weekStrip');
+  const proteinTarget = state.targets.protein || 1;
+  const cards = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const isToday = i===0;
+    const meals = isToday ? state.meals : getMealsForDate(key);
+    const totals = meals.reduce((acc,m)=>{acc.p+=Number(m.protein)||0; return acc;},{p:0});
+    const hasData = meals.length>0;
+    const pct = hasData ? Math.min(100,(totals.p/proteinTarget)*100) : 0;
+    const over = totals.p > proteinTarget;
+    const dayLabel = d.toLocaleDateString(undefined,{weekday:'short'}).slice(0,3);
+    cards.push(`<div class="week-card ${isToday?'today':'clickable'}" ${!isToday?`onclick="openDayDetail('${key}')"`:''}>
+      <div class="day-label">${dayLabel} ${d.getDate()}</div>
+      <div class="mini-bar-track"><div class="mini-bar-fill ${over?'over':''}" style="height:${pct}%"></div></div>
+      <div class="mini-label">${hasData? Math.round(totals.p)+'g' : '\u2014'}</div>
+    </div>`);
+  }
+  strip.innerHTML = cards.join('');
+}
+
+let currentDetailDate = null;
+
+function openDayDetail(dateKey){
+  currentDetailDate = dateKey;
+  const meals = getMealsForDate(dateKey);
+  document.getElementById('dayDetailTitle').textContent = dateKey;
+  const selectAllWrap = document.getElementById('dayDetailSelectAll');
+  const list = document.getElementById('dayDetailList');
+  document.getElementById('dayDetailModal').classList.add('open');
+
+  if(!meals.length){
+    selectAllWrap.innerHTML = '';
+    list.innerHTML = '<div class="empty-state">No meals logged that day.</div>';
+    return;
+  }
+
+  selectAllWrap.innerHTML = `<label style="display:flex; align-items:center; gap:6px; font-family:'IBM Plex Mono'; font-size:0.75rem; color:var(--ink-soft); margin-bottom:6px;"><input type="checkbox" id="selectAllDay" onchange="toggleSelectAllDay()"> Select all</label>`;
+
+  const sorted = [...meals].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  list.innerHTML = sorted.map(m=>`
+    <div class="lineup-row">
+      <input type="checkbox" class="day-check" data-meal-id="${m.id}" style="margin-right:2px; flex-shrink:0;">
+      <div class="time mono">${m.time}</div>
+      <div class="name">${m.name}</div>
+      <div class="macros">${Math.round(m.calories)} cal &middot; P${Math.round(m.protein)} C${Math.round(m.carbs)} F${Math.round(m.fat)}</div>
+      <button class="del" onclick="deleteHistMeal('${dateKey}','${m.id}')" title="Delete this entry">&times;</button>
+    </div>
+  `).join('');
+}
+
+function toggleSelectAllDay(){
+  const checked = document.getElementById('selectAllDay').checked;
+  document.querySelectorAll('.day-check').forEach(cb=> cb.checked = checked);
+}
+
+function closeDayDetail(){
+  document.getElementById('dayDetailModal').classList.remove('open');
+  currentDetailDate = null;
+}
+
+function copySelectedToToday(){
+  if(!currentDetailDate) return;
+  const selectedIds = Array.from(document.querySelectorAll('.day-check:checked')).map(cb=>cb.dataset.mealId);
+  if(!selectedIds.length){ showToast('Select at least one item first'); return; }
+  const meals = getMealsForDate(currentDetailDate);
+  let count = 0;
+  meals.forEach(m=>{
+    if(selectedIds.includes(m.id)){
+      state.meals.push({...m, id: Date.now()+'-'+Math.random().toString(36).slice(2), source:'copied'});
+      count++;
+    }
+  });
+  saveMeals();
+  renderAll();
+  closeDayDetail();
+  showToast('Copied '+count+' item'+(count===1?'':'s')+' to today');
+}
+
+function deleteHistMeal(dateKey, mealId){
+  let meals = getMealsForDate(dateKey);
+  meals = meals.filter(m=>m.id!==mealId);
+  lsSet('meals:'+dateKey, JSON.stringify(meals));
+  openDayDetail(dateKey);
+  renderWeekStrip();
+  loadHistory();
+  showToast('Entry deleted');
 }
 
 function exportData(){
