@@ -648,7 +648,16 @@ async function lookupBarcode(){
       fat: Number(n.fat_100g)||0,
       calories: Number(n['energy-kcal_100g'])||0
     };
-    renderBarcodeResult(p.product_name || 'Unknown product', p.brands || '', per100);
+    const perServingRaw = {
+      protein: Number(n.proteins_serving),
+      carbs: Number(n.carbohydrates_serving),
+      fat: Number(n.fat_serving),
+      calories: Number(n['energy-kcal_serving'])
+    };
+    const hasServing = Object.values(perServingRaw).every(v => !isNaN(v));
+    const perServing = hasServing ? perServingRaw : null;
+    const servingLabel = p.serving_size || null;
+    renderBarcodeResult(p.product_name || 'Unknown product', p.brands || '', per100, perServing, servingLabel);
   } catch(err){
     document.getElementById('barcodeResults').innerHTML = '<p class="small-note">Could not look that up \u2014 check your connection or try manual entry.</p>';
   } finally {
@@ -676,15 +685,22 @@ function renderBarcodeNotFound(code){
   document.getElementById('barcodeResults').innerHTML = html;
 }
 
-function renderBarcodeResult(name, brand, per100){
+function renderBarcodeResult(name, brand, per100, perServing, servingLabel){
+  const usingServing = !!perServing;
+  const initProtein = usingServing ? perServing.protein : per100.protein;
+  const initCarbs = usingServing ? perServing.carbs : per100.carbs;
+  const initFat = usingServing ? perServing.fat : per100.fat;
+  const initCal = usingServing ? perServing.calories : per100.calories;
+
   const html = `
     <div class="analysis-item">
       <div class="field"><label>Product</label><input type="text" id="bcName" value="${(name+(brand?' ('+brand+')':'')).replace(/"/g,'&quot;')}"></div>
       <div class="row2">
-        <div class="field"><label>Amount eaten</label><input type="number" id="bcGrams" value="100" oninput="rescaleBarcode()"></div>
+        <div class="field"><label id="bcAmountLabel">${usingServing?'Number of servings':'Amount eaten'}</label><input type="number" id="bcGrams" value="${usingServing?1:100}" step="${usingServing?'0.25':'1'}" oninput="rescaleBarcode()"></div>
         <div class="field"><label>Unit</label>
-          <select id="bcUnit" onchange="rescaleBarcode()">
-            <option value="g">grams (g)</option>
+          <select id="bcUnit" onchange="handleUnitChange()">
+            ${usingServing?`<option value="serving">1 serving${servingLabel?' ('+servingLabel+')':''}</option>`:''}
+            <option value="g" ${!usingServing?'selected':''}>grams (g)</option>
             <option value="oz">ounces (oz)</option>
             <option value="lb">pounds (lb)</option>
             <option value="ml">milliliters (ml)</option>
@@ -697,17 +713,24 @@ function renderBarcodeResult(name, brand, per100){
       </div>
       <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
       <div class="row4">
-        <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="${per100.protein.toFixed(1)}"></div>
-        <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="${per100.carbs.toFixed(1)}"></div>
-        <div class="field"><label>Fat (g)</label><input type="number" id="bcFat" value="${per100.fat.toFixed(1)}"></div>
-        <div class="field"><label>Calories</label><input type="number" id="bcCal" value="${Math.round(per100.calories)}"></div>
+        <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="${initProtein.toFixed(1)}"></div>
+        <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="${initCarbs.toFixed(1)}"></div>
+        <div class="field"><label>Fat (g)</label><input type="number" id="bcFat" value="${initFat.toFixed(1)}"></div>
+        <div class="field"><label>Calories</label><input type="number" id="bcCal" value="${Math.round(initCal)}"></div>
       </div>
-      <p class="small-note">Values shown are for 100g by default \u2014 pick a unit and enter the amount to rescale automatically, or edit the numbers directly. Liquid conversions assume a water-like density, which is close enough for most drinks but not exact for things like oil or syrup.</p>
+      <p class="small-note">${usingServing ? 'Defaulted to the label\u2019s exact serving size \u2014 no guessing involved. Switch to grams/oz/cup etc. below only if you ate a different amount; those conversions assume a water-like density, which is approximate and won\u2019t be exact for every food.' : 'This product has no labeled serving size on file, so values default to per-100g. Unit conversions below assume a water-like density \u2014 a reasonable approximation for most foods, but not exact for very light or dense items.'}</p>
       <button class="btn" onclick="confirmBarcode()">Add to log</button>
     </div>
   `;
   document.getElementById('barcodeResults').innerHTML = html;
   document.getElementById('barcodeResults').dataset.per100 = JSON.stringify(per100);
+  document.getElementById('barcodeResults').dataset.perServing = perServing ? JSON.stringify(perServing) : 'null';
+}
+
+function handleUnitChange(){
+  const unit = document.getElementById('bcUnit').value;
+  document.getElementById('bcAmountLabel').textContent = unit==='serving' ? 'Number of servings' : 'Amount eaten';
+  rescaleBarcode();
 }
 
 const UNIT_TO_GRAMS = {
@@ -723,12 +746,27 @@ const UNIT_TO_GRAMS = {
 
 function rescaleBarcode(){
   const per100 = JSON.parse(document.getElementById('barcodeResults').dataset.per100 || '{}');
+  const perServingRaw = document.getElementById('barcodeResults').dataset.perServing;
+  const perServing = (perServingRaw && perServingRaw !== 'null') ? JSON.parse(perServingRaw) : null;
   const amount = Number(document.getElementById('bcGrams').value)||0;
   const unit = document.getElementById('bcUnit').value;
-  const grams = amount * (UNIT_TO_GRAMS[unit] || 1);
-  const factor = grams/100;
-  document.getElementById('bcProtein').value = ((per100.protein||0)*factor).toFixed(1);
-  document.getElementById('bcCarbs').value = ((per100.carbs||0)*factor).toFixed(1);
+
+  let protein, carbs, fat, calories;
+  if(unit === 'serving' && perServing){
+    protein = perServing.protein * amount;
+    carbs = perServing.carbs * amount;
+    fat = perServing.fat * amount;
+    calories = perServing.calories * amount;
+  } else {
+    const grams = amount * (UNIT_TO_GRAMS[unit] || 1);
+    const factor = grams/100;
+    protein = (per100.protein||0)*factor;
+    carbs = (per100.carbs||0)*factor;
+    fat = (per100.fat||0)*factor;
+    calories = (per100.calories||0)*factor;
+  }
+  document.getElementById('bcProtein').value = protein.toFixed(1);
+  document.getElementById('bcCarbs').value = carbs.toFixed(1);
   document.getElementById('bcFat').value = ((per100.fat||0)*factor).toFixed(1);
   document.getElementById('bcCal').value = Math.round((per100.calories||0)*factor);
 }
