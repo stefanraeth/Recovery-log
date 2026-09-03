@@ -73,6 +73,16 @@
   }
   .phase-toggle button.active{background:var(--primary); color:#fff;}
   .gear, .theme-toggle{background:var(--surface-alt); border:none; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:1.1rem;}
+  .profile-pill{
+    display:flex; align-items:center; gap:8px; background:var(--surface-alt); border:none; border-radius:20px;
+    padding:6px 14px 6px 6px; font-family:'Nunito'; font-weight:800; font-size:0.85rem; color:var(--ink); cursor:pointer;
+  }
+  .profile-avatar{
+    display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+    background:var(--primary); color:#fff; font-weight:800; font-size:0.8rem; flex-shrink:0;
+  }
+  .profile-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:2px solid var(--line);}
+  .profile-row .profile-name{flex:1; font-weight:700;}
 
   .week-wrap{padding:12px 20px 4px;}
   .week-wrap h3{font-family:'Nunito'; font-weight:700; font-size:0.72rem; letter-spacing:0.06em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
@@ -182,6 +192,7 @@
     <p>Nutrition tracker &mdash; today, <span id="todayLabel"></span></p>
   </div>
   <div class="header-controls">
+    <button class="profile-pill" id="profilePill" onclick="openProfileModal()"></button>
     <div class="phase-toggle">
       <button id="phase1Btn" onclick="setPhase('phase1')">PHASE 1</button>
       <button id="phase2Btn" onclick="setPhase('phase2')">PHASE 2</button>
@@ -273,6 +284,18 @@
   </main>
 </div>
 
+<div class="modal-bg" id="profileModal">
+  <div class="modal">
+    <h2>Profiles</h2>
+    <p class="small-note">Switch between family members, or add someone new &mdash; everyone gets their own targets and log, all on this one device.</p>
+    <div id="profileList"></div>
+    <hr>
+    <div class="field"><label>New profile name</label><input type="text" id="newProfileName" placeholder="e.g. Mom"></div>
+    <button class="btn" style="width:100%" onclick="addProfile()">+ Add profile</button>
+    <div style="margin-top:10px;"><button class="btn secondary" style="width:100%" onclick="closeProfileModal()">Close</button></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="dayDetailModal">
   <div class="modal">
     <h2 id="dayDetailTitle">Day</h2>
@@ -302,7 +325,7 @@
     </div>
     <hr>
     <h2 style="font-size:1.4rem;">Backup &amp; transfer</h2>
-    <p class="small-note">This app's data lives only on this device/browser. Use export to back it up or move it to another device &mdash; family members should install their own copy rather than importing your file, so everyone gets their own separate log.</p>
+    <p class="small-note">This app's data lives only on this device/browser. Export backs up every profile on this device at once; import restores all of them together.</p>
     <div style="display:flex; gap:10px; margin-top:10px;">
       <button class="btn secondary" style="flex:1;" onclick="exportData()">Export backup</button>
       <button class="btn secondary" style="flex:1;" onclick="document.getElementById('importFile').click()">Import backup</button>
@@ -352,14 +375,55 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
+let profiles = [];
+let activeProfileId = null;
+
+function loadProfiles(){ try{ return JSON.parse(lsGet('profiles') || '[]'); } catch(e){ return []; } }
+function saveProfiles(list){ lsSet('profiles', JSON.stringify(list)); }
+function mealsKey(date){ return 'meals:'+activeProfileId+':'+date; }
+function targetsKey(pid){ return 'settings:'+(pid||activeProfileId)+':targets'; }
+
+function migrateIfNeeded(){
+  const existing = loadProfiles();
+  if(existing.length) return;
+
+  const defaultId = 'p_'+Date.now();
+  const legacyMealKeys = lsListPrefix('meals:').filter(k => /^meals:\d{4}-\d{2}-\d{2}$/.test(k));
+  legacyMealKeys.forEach(k=>{
+    const date = k.slice('meals:'.length);
+    const val = lsGet(k);
+    if(val) lsSet('meals:'+defaultId+':'+date, val);
+    try{ localStorage.removeItem(k); } catch(e){}
+  });
+  const legacyTargets = lsGet('settings:targets');
+  if(legacyTargets){
+    lsSet('settings:'+defaultId+':targets', legacyTargets);
+    try{ localStorage.removeItem('settings:targets'); } catch(e){}
+  }
+  saveProfiles([{id:defaultId, name:'Me'}]);
+  lsSet('activeProfile', defaultId);
+}
+
 function init(){
   const savedTheme = lsGet('settings:theme') || 'light';
   applyTheme(savedTheme);
 
+  migrateIfNeeded();
+  profiles = loadProfiles();
+  activeProfileId = lsGet('activeProfile') || (profiles[0] && profiles[0].id);
+  if(!activeProfileId){
+    const id = 'p_'+Date.now();
+    profiles = [{id, name:'Me'}];
+    saveProfiles(profiles);
+    activeProfileId = id;
+    lsSet('activeProfile', id);
+  }
+  renderProfilePill();
+
   document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
   document.getElementById('manTime').value = nowTime();
 
-  const rawSettings = lsGet('settings:targets');
+  const rawSettings = lsGet(targetsKey());
   if(rawSettings){
     try{
       const parsed = JSON.parse(rawSettings);
@@ -367,11 +431,12 @@ function init(){
       state.targets = parsed.targets || DEFAULT_TARGETS[state.phase];
     } catch(e){ state.targets = DEFAULT_TARGETS.phase1; }
   } else {
+    state.phase = 'phase1';
     state.targets = DEFAULT_TARGETS.phase1;
   }
   updatePhaseButtons();
 
-  const rawMeals = lsGet('meals:'+todayKey());
+  const rawMeals = lsGet(mealsKey(todayKey()));
   try{ state.meals = rawMeals ? JSON.parse(rawMeals) : []; } catch(e){ state.meals = []; }
 
   renderAll();
@@ -465,7 +530,7 @@ function renderLineup(){
 }
 
 function saveMeals(){
-  const ok = lsSet('meals:'+todayKey(), JSON.stringify(state.meals));
+  const ok = lsSet(mealsKey(todayKey()), JSON.stringify(state.meals));
   if(!ok) showToast('Could not save &mdash; storage may be full');
 }
 function deleteMeal(id){
@@ -686,7 +751,7 @@ function updatePhaseButtons(){
   document.getElementById('phase2Btn').classList.toggle('active', state.phase==='phase2');
 }
 function persistSettings(){
-  const ok = lsSet('settings:targets', JSON.stringify({phase:state.phase, targets:state.targets}));
+  const ok = lsSet(targetsKey(), JSON.stringify({phase:state.phase, targets:state.targets}));
   if(!ok) showToast('Could not save settings');
 }
 
@@ -713,14 +778,15 @@ function saveSettings(){
 
 function loadHistory(){
   const list = document.getElementById('historyList');
-  const keys = lsListPrefix('meals:');
+  const prefix = 'meals:'+activeProfileId+':';
+  const keys = lsListPrefix(prefix);
   if(!keys.length){ list.innerHTML = '<div class="empty-state">No history yet.</div>'; return; }
-  const dates = keys.map(k=>k.replace('meals:','')).sort().reverse().slice(0,30);
+  const dates = keys.map(k=>k.slice(prefix.length)).sort().reverse().slice(0,30);
   const rows = [];
   dates.forEach(d=>{
     if(d === todayKey()) return;
     try{
-      const meals = JSON.parse(lsGet('meals:'+d) || '[]');
+      const meals = getMealsForDate(d);
       const totals = meals.reduce((acc,m)=>{acc.p+=Number(m.protein)||0; acc.c+=Number(m.calories)||0; return acc;},{p:0,c:0});
       rows.push(`<div class="hist-row" style="cursor:pointer;" onclick="openDayDetail('${d}')"><span>${d}</span><span>${meals.length} meals &middot; P${Math.round(totals.p)}g &middot; ${Math.round(totals.c)} cal</span></div>`);
     } catch(e){}
@@ -729,7 +795,7 @@ function loadHistory(){
 }
 
 function getMealsForDate(dateKey){
-  try{ return JSON.parse(lsGet('meals:'+dateKey) || '[]'); } catch(e){ return []; }
+  try{ return JSON.parse(lsGet(mealsKey(dateKey)) || '[]'); } catch(e){ return []; }
 }
 
 function renderWeekStrip(){
@@ -817,18 +883,76 @@ function copySelectedToToday(){
 function deleteHistMeal(dateKey, mealId){
   let meals = getMealsForDate(dateKey);
   meals = meals.filter(m=>m.id!==mealId);
-  lsSet('meals:'+dateKey, JSON.stringify(meals));
+  lsSet(mealsKey(dateKey), JSON.stringify(meals));
   openDayDetail(dateKey);
   renderWeekStrip();
   loadHistory();
   showToast('Entry deleted');
 }
 
+function renderProfilePill(){
+  const p = profiles.find(x=>x.id===activeProfileId) || {name:'Me'};
+  document.getElementById('profilePill').innerHTML =
+    `<span class="profile-avatar">${(p.name[0]||'?').toUpperCase()}</span>${p.name}`;
+}
+
+function openProfileModal(){
+  renderProfileList();
+  document.getElementById('profileModal').classList.add('open');
+}
+function closeProfileModal(){ document.getElementById('profileModal').classList.remove('open'); }
+
+function renderProfileList(){
+  const list = document.getElementById('profileList');
+  list.innerHTML = profiles.map(p=>`
+    <div class="profile-row">
+      <span class="profile-avatar">${(p.name[0]||'?').toUpperCase()}</span>
+      <span class="profile-name">${p.name}${p.id===activeProfileId?' (current)':''}</span>
+      ${p.id!==activeProfileId ? `<button class="btn secondary" style="padding:7px 14px; font-size:0.75rem;" onclick="switchProfile('${p.id}')">Switch</button>` : ''}
+      ${(profiles.length>1 && p.id!==activeProfileId) ? `<button class="del" onclick="deleteProfile('${p.id}')" title="Delete profile">&times;</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function switchProfile(id){
+  activeProfileId = id;
+  lsSet('activeProfile', id);
+  closeProfileModal();
+  init();
+  const p = profiles.find(x=>x.id===id);
+  showToast('Switched to '+(p ? p.name : 'profile'));
+}
+
+function addProfile(){
+  const nameInput = document.getElementById('newProfileName');
+  const name = nameInput.value.trim();
+  if(!name){ showToast('Enter a name first'); return; }
+  const id = 'p_'+Date.now();
+  profiles.push({id, name});
+  saveProfiles(profiles);
+  nameInput.value = '';
+  renderProfileList();
+  showToast(name+' added \u2014 tap Switch to set them up');
+}
+
+function deleteProfile(id){
+  if(profiles.length<=1){ showToast('Keep at least one profile'); return; }
+  if(id===activeProfileId){ showToast('Switch away from this profile first'); return; }
+  if(!confirm('Delete this profile and all of its logged data? This cannot be undone.')) return;
+  lsListPrefix('meals:'+id+':').forEach(k=>{ try{ localStorage.removeItem(k); } catch(e){} });
+  try{ localStorage.removeItem('settings:'+id+':targets'); } catch(e){}
+  profiles = profiles.filter(p=>p.id!==id);
+  saveProfiles(profiles);
+  renderProfileList();
+  showToast('Profile deleted');
+}
+
 function exportData(){
   const dump = {};
   lsListPrefix('meals:').forEach(k=> dump[k] = lsGet(k));
-  const settings = lsGet('settings:targets');
-  if(settings) dump['settings:targets'] = settings;
+  lsListPrefix('settings:').forEach(k=> dump[k] = lsGet(k));
+  const profilesRaw = lsGet('profiles'); if(profilesRaw) dump['profiles'] = profilesRaw;
+  const activeRaw = lsGet('activeProfile'); if(activeRaw) dump['activeProfile'] = activeRaw;
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
