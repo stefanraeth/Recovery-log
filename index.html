@@ -648,14 +648,35 @@ async function lookupBarcode(){
       fat: Number(n.fat_100g)||0,
       calories: Number(n['energy-kcal_100g'])||0
     };
-    const perServingRaw = {
+
+    // Priority 1: OFF's own precomputed per-serving values, if present.
+    const precomputed = {
       protein: Number(n.proteins_serving),
       carbs: Number(n.carbohydrates_serving),
       fat: Number(n.fat_serving),
       calories: Number(n['energy-kcal_serving'])
     };
-    const hasServing = Object.values(perServingRaw).every(v => !isNaN(v));
-    const perServing = hasServing ? perServingRaw : null;
+    let perServing = Object.values(precomputed).every(v => !isNaN(v)) ? precomputed : null;
+
+    // Priority 2: a numeric serving_quantity (grams) field, scaled from per100 ourselves.
+    let servingGrams = Number(p.serving_quantity);
+
+    // Priority 3: parse a "(NNN g)" or "(NNN ml)" hint out of the serving_size text.
+    if(isNaN(servingGrams) && p.serving_size){
+      const match = String(p.serving_size).match(/([\d.]+)\s?(g|ml|mL)\b/i);
+      if(match) servingGrams = Number(match[1]);
+    }
+
+    if(!perServing && !isNaN(servingGrams) && servingGrams > 0){
+      const factor = servingGrams/100;
+      perServing = {
+        protein: (per100.protein||0)*factor,
+        carbs: (per100.carbs||0)*factor,
+        fat: (per100.fat||0)*factor,
+        calories: (per100.calories||0)*factor
+      };
+    }
+
     const servingLabel = p.serving_size || null;
     renderBarcodeResult(p.product_name || 'Unknown product', p.brands || '', per100, perServing, servingLabel);
   } catch(err){
