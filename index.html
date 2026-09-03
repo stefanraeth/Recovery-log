@@ -83,6 +83,12 @@
   }
   .profile-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:2px solid var(--line);}
   .profile-row .profile-name{flex:1; font-weight:700;}
+  .day-totals{
+    display:flex; justify-content:space-between; gap:6px; background:var(--surface-alt); border-radius:12px;
+    padding:12px 14px; margin-bottom:14px; font-family:'Nunito'; font-weight:800; font-size:0.85rem; color:var(--ink);
+  }
+  .day-totals .dt-item{text-align:center; flex:1;}
+  .day-totals .dt-label{display:block; font-size:0.62rem; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:2px;}
 
   .week-wrap{padding:12px 20px 4px;}
   .week-wrap h3{font-family:'Nunito'; font-weight:700; font-size:0.72rem; letter-spacing:0.06em; margin:0 0 10px; color:var(--ink-soft); text-transform:uppercase;}
@@ -299,6 +305,7 @@
 <div class="modal-bg" id="dayDetailModal">
   <div class="modal">
     <h2 id="dayDetailTitle">Day</h2>
+    <div id="dayDetailTotals"></div>
     <div id="dayDetailSelectAll"></div>
     <div id="dayDetailList"></div>
     <div style="display:flex; gap:10px; margin-top:14px;">
@@ -824,6 +831,22 @@ function renderWeekStrip(){
 
 let currentDetailDate = null;
 
+function renderDayTotals(meals){
+  const totals = meals.reduce((acc,m)=>{
+    acc.calories += Number(m.calories)||0;
+    acc.protein += Number(m.protein)||0;
+    acc.carbs += Number(m.carbs)||0;
+    acc.fat += Number(m.fat)||0;
+    return acc;
+  }, {calories:0, protein:0, carbs:0, fat:0});
+  document.getElementById('dayDetailTotals').innerHTML = `
+    <div class="dt-item"><span class="dt-label">Calories</span>${Math.round(totals.calories)}</div>
+    <div class="dt-item"><span class="dt-label">Protein</span>${Math.round(totals.protein)}g</div>
+    <div class="dt-item"><span class="dt-label">Carbs</span>${Math.round(totals.carbs)}g</div>
+    <div class="dt-item"><span class="dt-label">Fat</span>${Math.round(totals.fat)}g</div>
+  `;
+}
+
 function openDayDetail(dateKey){
   currentDetailDate = dateKey;
   const meals = getMealsForDate(dateKey);
@@ -831,6 +854,8 @@ function openDayDetail(dateKey){
   const selectAllWrap = document.getElementById('dayDetailSelectAll');
   const list = document.getElementById('dayDetailList');
   document.getElementById('dayDetailModal').classList.add('open');
+
+  renderDayTotals(meals);
 
   if(!meals.length){
     selectAllWrap.innerHTML = '';
