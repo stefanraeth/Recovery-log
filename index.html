@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Recovery Log</title>
+<title>Diet Tracker</title>
 
 <!-- iOS "Add to Home Screen" support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Recovery Log">
+<meta name="apple-mobile-web-app-title" content="Diet Tracker">
 <meta name="theme-color" content="#16233F">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2316233F'/%3E%3Ctext x='50' y='63' font-family='Georgia,serif' font-size='42' font-weight='bold' fill='%23C99A2E' text-anchor='middle'%3ERL%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2316233F'/%3E%3Ctext x='50' y='63' font-family='Georgia,serif' font-size='42' font-weight='bold' fill='%23C99A2E' text-anchor='middle'%3EDT%3C/text%3E%3C/svg%3E">
 
 <!-- Android / Chrome install support -->
-<link rel="manifest" href='data:application/manifest+json,{"name":"Recovery Log","short_name":"Recovery Log","start_url":".","display":"standalone","background_color":"%23FBF8F2","theme_color":"%2316233F","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%2316233F\'/%3E%3Ctext x=\'50\' y=\'63\' font-family=\'Georgia,serif\' font-size=\'42\' font-weight=\'bold\' fill=\'%23C99A2E\' text-anchor=\'middle\'%3ERL%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+<link rel="manifest" href='data:application/manifest+json,{"name":"Diet Tracker","short_name":"Diet Tracker","start_url":".","display":"standalone","background_color":"%23FBF8F2","theme_color":"%2316233F","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%2316233F\'/%3E%3Ctext x=\'50\' y=\'63\' font-family=\'Georgia,serif\' font-size=\'42\' font-weight=\'bold\' fill=\'%23C99A2E\' text-anchor=\'middle\'%3EDT%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -83,6 +83,13 @@
   }
   .profile-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:2px solid var(--line);}
   .profile-row .profile-name{flex:1; font-weight:700;}
+  .section-label{font-family:'Nunito'; font-weight:700; font-size:0.72rem; letter-spacing:0.06em; margin:0 0 8px; color:var(--ink-soft); text-transform:uppercase;}
+  .favorites-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:6px;}
+  .fav-chip{
+    display:flex; align-items:center; gap:6px; white-space:nowrap; background:var(--surface); border:none; border-radius:20px;
+    padding:9px 14px; font-family:'Nunito'; font-weight:700; font-size:0.82rem; color:var(--ink); cursor:pointer; box-shadow:var(--shadow); flex-shrink:0;
+  }
+  .fav-remove{color:var(--warn); font-weight:800; margin-left:2px;}
   .day-totals{
     display:flex; justify-content:space-between; gap:6px; background:var(--surface-alt); border-radius:12px;
     padding:12px 14px; margin-bottom:14px; font-family:'Nunito'; font-weight:800; font-size:0.85rem; color:var(--ink);
@@ -194,7 +201,7 @@
 
 <header>
   <div>
-    <h1 class="display">🍎 Recovery Log</h1>
+    <h1 class="display">🍎 Diet Tracker</h1>
     <p>Nutrition tracker &mdash; today, <span id="todayLabel"></span></p>
   </div>
   <div class="header-controls">
@@ -235,6 +242,10 @@
   <main>
   <!-- LOG PANEL -->
   <div class="panel active" id="panelLog">
+    <div id="favoritesWrap" style="display:none;">
+      <div class="section-label">Quick add</div>
+      <div id="favoritesRow" class="favorites-row"></div>
+    </div>
     <div class="subtabs">
       <button id="subManualBtn" class="active" onclick="switchSub('manual')">Manual</button>
       <button id="subBarcodeBtn" onclick="switchSub('barcode')">Barcode</button>
@@ -247,19 +258,42 @@
           <input type="text" id="manName" placeholder="e.g. Grilled chicken, rice, broccoli">
         </div>
         <div class="row2">
+          <div class="field"><label>Date</label><input type="date" id="manDate"></div>
           <div class="field"><label>Time</label><input type="time" id="manTime"></div>
-          <div class="field"><label>Calories (optional &mdash; auto-calculated)</label><input type="number" id="manCal" placeholder="auto"></div>
         </div>
+        <div class="field"><label>Calories (optional &mdash; auto-calculated)</label><input type="number" id="manCal" placeholder="auto"></div>
         <div class="row4">
           <div class="field"><label>Protein (g)</label><input type="number" id="manProtein" value="0"></div>
           <div class="field"><label>Carbs (g)</label><input type="number" id="manCarbs" value="0"></div>
           <div class="field"><label>Fat (g)</label><input type="number" id="manFat" value="0"></div>
-          <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="addManualMeal()">Log meal</button></div>
         </div>
+        <label style="display:flex; align-items:center; gap:8px; font-family:'Nunito'; font-weight:700; font-size:0.82rem; margin:12px 0; cursor:pointer;">
+          <input type="checkbox" id="manSaveFav"> &#9733; Also save as a favorite
+        </label>
+        <button class="btn" style="width:100%" onclick="addManualMeal()">Log meal</button>
       </div>
     </div>
 
     <div id="subBarcode" style="display:none;">
+      <div class="card" style="margin-bottom:10px;">
+        <label style="display:flex; align-items:center; gap:8px; font-family:'Nunito'; font-weight:700; font-size:0.85rem; cursor:pointer;">
+          <input type="checkbox" id="mealBuilderToggle" onchange="toggleMealBuilder()">
+          Build a meal from multiple scans
+        </label>
+        <div id="mealBuilderPanel" style="display:none; margin-top:12px;">
+          <div id="mealBuilderList"></div>
+          <div class="day-totals" id="mealBuilderTotals" style="margin-top:10px;"></div>
+          <div class="field" style="margin-top:10px;"><label>Meal name</label><input type="text" id="mealBuilderName" placeholder="e.g. Lunch" oninput="this.dataset.userEdited='1'"></div>
+          <div class="row2">
+            <div class="field"><label>Date</label><input type="date" id="mealBuilderDate"></div>
+            <div class="field"><label>Time</label><input type="time" id="mealBuilderTime"></div>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:6px;">
+            <button class="btn" onclick="finishMealBuilder()">Log combined meal</button>
+            <button class="btn secondary" onclick="clearMealBuilder()">Clear</button>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div id="scannerArea" style="display:none;">
           <div id="scannerViewport" style="width:100%; border-radius:6px; overflow:hidden; background:#000; position:relative;"></div>
@@ -285,9 +319,31 @@
 
   <!-- HISTORY PANEL -->
   <div class="panel" id="panelHistory">
+    <div class="card"><div id="trendChart"></div></div>
     <div class="card" id="historyCard"><div id="historyList"></div></div>
   </div>
   </main>
+</div>
+
+<div class="modal-bg" id="editMealModal">
+  <div class="modal">
+    <h2>Edit Meal</h2>
+    <div class="field"><label>Name</label><input type="text" id="editName"></div>
+    <div class="row2">
+      <div class="field"><label>Date</label><input type="date" id="editDate"></div>
+      <div class="field"><label>Time</label><input type="time" id="editTime"></div>
+    </div>
+    <div class="row4">
+      <div class="field"><label>Protein (g)</label><input type="number" id="editProtein"></div>
+      <div class="field"><label>Carbs (g)</label><input type="number" id="editCarbs"></div>
+      <div class="field"><label>Fat (g)</label><input type="number" id="editFat"></div>
+      <div class="field"><label>Calories</label><input type="number" id="editCal"></div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn" onclick="saveEditedMeal()">Save changes</button>
+      <button class="btn secondary" onclick="closeEditMeal()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-bg" id="profileModal">
@@ -426,9 +482,12 @@ function init(){
     lsSet('activeProfile', id);
   }
   renderProfilePill();
+  renderFavorites();
 
   document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'short', day:'numeric'});
   document.getElementById('manTime').value = nowTime();
+  document.getElementById('manDate').value = todayKey();
+  document.getElementById('manDate').max = todayKey();
 
   const rawSettings = lsGet(targetsKey());
   if(rawSettings){
@@ -531,7 +590,9 @@ function renderLineup(){
       <div class="time mono">${m.time}</div>
       <div class="name">${m.name}</div>
       <div class="macros">${Math.round(m.calories)} cal &middot; P${Math.round(m.protein)} C${Math.round(m.carbs)} F${Math.round(m.fat)}</div>
-      <button class="del" onclick="deleteMeal('${m.id}')">&times;</button>
+      <button class="del" style="color:var(--good);" onclick="openEditMeal('${todayKey()}','${m.id}')" title="Edit">&#9998;</button>
+      <button class="del" style="color:var(--secondary);" onclick="addFavoriteFromMeal('${todayKey()}','${m.id}')" title="Save as favorite">&#9733;</button>
+      <button class="del" onclick="deleteMeal('${m.id}')" title="Delete">&times;</button>
     </div>
   `).join('');
 }
@@ -546,8 +607,24 @@ function deleteMeal(id){
   renderAll();
 }
 
+function saveMealToDate(dateStr, meal){
+  if(dateStr === todayKey()){
+    state.meals.push(meal);
+    saveMeals();
+    renderAll();
+  } else {
+    const meals = getMealsForDate(dateStr);
+    meals.push(meal);
+    const ok = lsSet(mealsKey(dateStr), JSON.stringify(meals));
+    if(!ok){ showToast('Could not save \u2014 storage may be full'); return false; }
+    renderWeekStrip();
+  }
+  return true;
+}
+
 function addManualMeal(){
   const name = document.getElementById('manName').value.trim() || 'Meal';
+  const dateStr = document.getElementById('manDate').value || todayKey();
   const time = document.getElementById('manTime').value || nowTime();
   const protein = Number(document.getElementById('manProtein').value)||0;
   const carbs = Number(document.getElementById('manCarbs').value)||0;
@@ -555,16 +632,19 @@ function addManualMeal(){
   let calories = Number(document.getElementById('manCal').value);
   if(!calories){ calories = protein*4 + carbs*4 + fat*9; }
 
-  state.meals.push({id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'manual'});
-  saveMeals();
-  renderAll();
+  const meal = {id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'manual'};
+  saveMealToDate(dateStr, meal);
+  if(document.getElementById('manSaveFav').checked){
+    addFavoriteDirect(name, protein, carbs, fat, calories);
+  }
   document.getElementById('manName').value='';
   document.getElementById('manCal').value='';
   document.getElementById('manProtein').value=0;
   document.getElementById('manCarbs').value=0;
   document.getElementById('manFat').value=0;
   document.getElementById('manTime').value = nowTime();
-  showToast('Meal logged');
+  document.getElementById('manSaveFav').checked = false;
+  showToast(dateStr === todayKey() ? 'Meal logged' : 'Logged to '+dateStr);
 }
 
 let scannerRunning = false;
@@ -692,14 +772,15 @@ function renderBarcodeNotFound(code){
       <p class="small-note">No database match for barcode ${code} \u2014 enter it manually below (check the package label).</p>
       <div class="field"><label>Product</label><input type="text" id="bcName" value="Packaged food"></div>
       <div class="row2">
+        <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"></div>
         <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
-        <div class="field"><label>Calories</label><input type="number" id="bcCal" value="0"></div>
       </div>
+      <div class="field"><label>Calories</label><input type="number" id="bcCal" value="0"></div>
       <div class="row4">
         <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="0"></div>
         <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="0"></div>
         <div class="field"><label>Fat (g)</label><input type="number" id="bcFat" value="0"></div>
-        <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="confirmBarcode()">Add to log</button></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" style="width:100%" onclick="confirmBarcode()">${mealBuilderActive ? 'Add to meal' : 'Add to log'}</button></div>
       </div>
     </div>
   `;
@@ -733,6 +814,7 @@ function renderBarcodeResult(name, brand, per100, perServing, servingLabel){
         </div>
       </div>
       <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
+      <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"></div>
       <div class="row4">
         <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="${initProtein.toFixed(1)}"></div>
         <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="${initCarbs.toFixed(1)}"></div>
@@ -740,7 +822,7 @@ function renderBarcodeResult(name, brand, per100, perServing, servingLabel){
         <div class="field"><label>Calories</label><input type="number" id="bcCal" value="${Math.round(initCal)}"></div>
       </div>
       <p class="small-note">${usingServing ? 'Defaulted to the label\u2019s exact serving size \u2014 no guessing involved. Switch to grams/oz/cup etc. below only if you ate a different amount; those conversions assume a water-like density, which is approximate and won\u2019t be exact for every food.' : 'This product has no labeled serving size on file, so values default to per-100g. Unit conversions below assume a water-like density \u2014 a reasonable approximation for most foods, but not exact for very light or dense items.'}</p>
-      <button class="btn" onclick="confirmBarcode()">Add to log</button>
+      <button class="btn" onclick="confirmBarcode()">${mealBuilderActive ? 'Add to meal' : 'Add to log'}</button>
     </div>
   `;
   document.getElementById('barcodeResults').innerHTML = html;
@@ -791,20 +873,100 @@ function rescaleBarcode(){
   document.getElementById('bcFat').value = ((per100.fat||0)*factor).toFixed(1);
   document.getElementById('bcCal').value = Math.round((per100.calories||0)*factor);
 }
+let mealBuilderActive = false;
+let mealBuilderItems = [];
+
+function toggleMealBuilder(){
+  mealBuilderActive = document.getElementById('mealBuilderToggle').checked;
+  document.getElementById('mealBuilderPanel').style.display = mealBuilderActive ? 'block' : 'none';
+  if(mealBuilderActive){
+    document.getElementById('mealBuilderDate').value = todayKey();
+    document.getElementById('mealBuilderDate').max = todayKey();
+    document.getElementById('mealBuilderTime').value = nowTime();
+    renderMealBuilder();
+  }
+}
+
+function renderMealBuilder(){
+  const list = document.getElementById('mealBuilderList');
+  if(!mealBuilderItems.length){
+    list.innerHTML = '<div class="empty-state">No items added yet \u2014 look up or scan an item below, then tap "Add to meal".</div>';
+  } else {
+    list.innerHTML = mealBuilderItems.map((it,idx)=>`
+      <div class="lineup-row">
+        <div class="name">${it.name}</div>
+        <div class="macros">${Math.round(it.calories)} cal &middot; P${Math.round(it.protein)} C${Math.round(it.carbs)} F${Math.round(it.fat)}</div>
+        <button class="del" onclick="removeMealBuilderItem(${idx})">&times;</button>
+      </div>
+    `).join('');
+  }
+  const totals = mealBuilderItems.reduce((acc,it)=>{
+    acc.calories+=Number(it.calories)||0; acc.protein+=Number(it.protein)||0; acc.carbs+=Number(it.carbs)||0; acc.fat+=Number(it.fat)||0;
+    return acc;
+  }, {calories:0,protein:0,carbs:0,fat:0});
+  document.getElementById('mealBuilderTotals').innerHTML = `
+    <div class="dt-item"><span class="dt-label">Calories</span>${Math.round(totals.calories)}</div>
+    <div class="dt-item"><span class="dt-label">Protein</span>${Math.round(totals.protein)}g</div>
+    <div class="dt-item"><span class="dt-label">Carbs</span>${Math.round(totals.carbs)}g</div>
+    <div class="dt-item"><span class="dt-label">Fat</span>${Math.round(totals.fat)}g</div>
+  `;
+  const nameField = document.getElementById('mealBuilderName');
+  if(mealBuilderItems.length && !nameField.dataset.userEdited){
+    nameField.value = mealBuilderItems.map(i=>i.name).join(' + ');
+  }
+}
+
+function removeMealBuilderItem(idx){
+  mealBuilderItems.splice(idx,1);
+  renderMealBuilder();
+}
+
+function clearMealBuilder(){
+  mealBuilderItems = [];
+  const nameField = document.getElementById('mealBuilderName');
+  nameField.value = '';
+  delete nameField.dataset.userEdited;
+  renderMealBuilder();
+}
+
+function finishMealBuilder(){
+  if(!mealBuilderItems.length){ showToast('Add at least one item first'); return; }
+  const totals = mealBuilderItems.reduce((acc,it)=>{
+    acc.calories+=Number(it.calories)||0; acc.protein+=Number(it.protein)||0; acc.carbs+=Number(it.carbs)||0; acc.fat+=Number(it.fat)||0;
+    return acc;
+  }, {calories:0,protein:0,carbs:0,fat:0});
+  const name = document.getElementById('mealBuilderName').value.trim() || mealBuilderItems.map(i=>i.name).join(' + ');
+  const dateStr = document.getElementById('mealBuilderDate').value || todayKey();
+  const time = document.getElementById('mealBuilderTime').value || nowTime();
+  const meal = {id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein:totals.protein, carbs:totals.carbs, fat:totals.fat, calories:totals.calories, source:'combined'};
+  saveMealToDate(dateStr, meal);
+  showToast('Combined meal logged ('+mealBuilderItems.length+' items)');
+  clearMealBuilder();
+}
+
 function confirmBarcode(){
   const name = document.getElementById('bcName').value.trim() || 'Packaged food';
-  const time = document.getElementById('bcTime').value || nowTime();
   const protein = Number(document.getElementById('bcProtein').value)||0;
   const carbs = Number(document.getElementById('bcCarbs').value)||0;
   const fat = Number(document.getElementById('bcFat').value)||0;
   const calories = Number(document.getElementById('bcCal').value)||0;
 
-  state.meals.push({id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'barcode'});
-  saveMeals();
-  renderAll();
+  if(mealBuilderActive){
+    mealBuilderItems.push({name, protein, carbs, fat, calories});
+    renderMealBuilder();
+    document.getElementById('barcodeResults').innerHTML = '';
+    document.getElementById('barcodeInput').value = '';
+    showToast(name+' added to meal');
+    return;
+  }
+
+  const dateStr = (document.getElementById('bcDate') && document.getElementById('bcDate').value) || todayKey();
+  const time = document.getElementById('bcTime').value || nowTime();
+  const meal = {id:Date.now()+'-'+Math.random().toString(36).slice(2), name, time, protein, carbs, fat, calories, source:'barcode'};
+  saveMealToDate(dateStr, meal);
   document.getElementById('barcodeResults').innerHTML = '';
   document.getElementById('barcodeInput').value = '';
-  showToast('Meal logged');
+  showToast(dateStr === todayKey() ? 'Meal logged' : 'Logged to '+dateStr);
 }
 
 function showScreen(screen){
@@ -869,6 +1031,7 @@ function saveSettings(){
 }
 
 function loadHistory(){
+  renderTrendChart();
   const list = document.getElementById('historyList');
   const prefix = 'meals:'+activeProfileId+':';
   const keys = lsListPrefix(prefix);
@@ -957,6 +1120,7 @@ function openDayDetail(dateKey){
       <div class="time mono">${m.time}</div>
       <div class="name">${m.name}</div>
       <div class="macros">${Math.round(m.calories)} cal &middot; P${Math.round(m.protein)} C${Math.round(m.carbs)} F${Math.round(m.fat)}</div>
+      <button class="del" style="color:var(--good);" onclick="openEditMeal('${dateKey}','${m.id}')" title="Edit">&#9998;</button>
       <button class="del" onclick="deleteHistMeal('${dateKey}','${m.id}')" title="Delete this entry">&times;</button>
     </div>
   `).join('');
@@ -998,6 +1162,160 @@ function deleteHistMeal(dateKey, mealId){
   renderWeekStrip();
   loadHistory();
   showToast('Entry deleted');
+}
+
+let editContext = null;
+
+function openEditMeal(dateStr, mealId){
+  const meals = getMealsForDate(dateStr);
+  const m = meals.find(x=>x.id===mealId);
+  if(!m){ showToast('Could not find that meal'); return; }
+  editContext = {date: dateStr, id: mealId};
+  document.getElementById('editName').value = m.name;
+  document.getElementById('editDate').value = dateStr;
+  document.getElementById('editDate').max = todayKey();
+  document.getElementById('editTime').value = m.time;
+  document.getElementById('editProtein').value = m.protein;
+  document.getElementById('editCarbs').value = m.carbs;
+  document.getElementById('editFat').value = m.fat;
+  document.getElementById('editCal').value = m.calories;
+  document.getElementById('editMealModal').classList.add('open');
+}
+
+function closeEditMeal(){
+  document.getElementById('editMealModal').classList.remove('open');
+  editContext = null;
+}
+
+function saveEditedMeal(){
+  if(!editContext) return;
+  const oldDate = editContext.date;
+  const newDate = document.getElementById('editDate').value || oldDate;
+  const updated = {
+    id: editContext.id,
+    name: document.getElementById('editName').value.trim() || 'Meal',
+    time: document.getElementById('editTime').value || nowTime(),
+    protein: Number(document.getElementById('editProtein').value)||0,
+    carbs: Number(document.getElementById('editCarbs').value)||0,
+    fat: Number(document.getElementById('editFat').value)||0,
+    calories: Number(document.getElementById('editCal').value)||0,
+    source: 'edited'
+  };
+
+  if(oldDate === todayKey()){
+    state.meals = state.meals.filter(m=>m.id!==editContext.id);
+    saveMeals();
+  } else {
+    const oldMeals = getMealsForDate(oldDate).filter(m=>m.id!==editContext.id);
+    lsSet(mealsKey(oldDate), JSON.stringify(oldMeals));
+  }
+
+  if(newDate === todayKey()){
+    state.meals.push(updated);
+    saveMeals();
+  } else {
+    const newMeals = getMealsForDate(newDate);
+    newMeals.push(updated);
+    lsSet(mealsKey(newDate), JSON.stringify(newMeals));
+  }
+
+  renderAll();
+  loadHistory();
+  if(document.getElementById('dayDetailModal').classList.contains('open') && currentDetailDate){
+    openDayDetail(currentDetailDate);
+  }
+  closeEditMeal();
+  showToast('Meal updated');
+}
+
+function loadFavorites(){ try{ return JSON.parse(lsGet('favorites:'+activeProfileId) || '[]'); } catch(e){ return []; } }
+function saveFavoritesList(list){ lsSet('favorites:'+activeProfileId, JSON.stringify(list)); }
+
+function renderFavorites(){
+  const wrap = document.getElementById('favoritesWrap');
+  const row = document.getElementById('favoritesRow');
+  const favs = loadFavorites();
+  if(!favs.length){ wrap.style.display = 'none'; row.innerHTML=''; return; }
+  wrap.style.display = 'block';
+  row.innerHTML = favs.map(f=>`
+    <button class="fav-chip" onclick="quickAddFavorite('${f.id}')">
+      ${f.name}
+      <span class="fav-remove" onclick="event.stopPropagation(); removeFavorite('${f.id}')">&times;</span>
+    </button>
+  `).join('');
+}
+
+function addFavoriteDirect(name, protein, carbs, fat, calories){
+  const favs = loadFavorites();
+  if(favs.some(f=>f.name===name && f.protein===protein && f.carbs===carbs && f.fat===fat && f.calories===calories)){
+    return;
+  }
+  favs.push({id:'f_'+Date.now(), name, protein, carbs, fat, calories});
+  saveFavoritesList(favs);
+  renderFavorites();
+}
+
+function addFavoriteFromMeal(dateStr, mealId){
+  const meals = getMealsForDate(dateStr);
+  const m = meals.find(x=>x.id===mealId);
+  if(!m){ showToast('Could not find that meal'); return; }
+  const favs = loadFavorites();
+  if(favs.some(f=>f.name===m.name && f.protein===m.protein && f.carbs===m.carbs && f.fat===m.fat && f.calories===m.calories)){
+    showToast('Already in favorites');
+    return;
+  }
+  addFavoriteDirect(m.name, m.protein, m.carbs, m.fat, m.calories);
+  showToast('Added to favorites');
+}
+
+function quickAddFavorite(favId){
+  const favs = loadFavorites();
+  const f = favs.find(x=>x.id===favId);
+  if(!f) return;
+  const meal = {id:Date.now()+'-'+Math.random().toString(36).slice(2), name:f.name, time: nowTime(), protein:f.protein, carbs:f.carbs, fat:f.fat, calories:f.calories, source:'favorite'};
+  saveMealToDate(todayKey(), meal);
+  showToast(f.name+' logged');
+}
+
+function removeFavorite(favId){
+  let favs = loadFavorites();
+  favs = favs.filter(f=>f.id!==favId);
+  saveFavoritesList(favs);
+  renderFavorites();
+}
+
+function renderTrendChart(){
+  const container = document.getElementById('trendChart');
+  if(!container) return;
+  const days = 14;
+  const target = state.targets.protein || 1;
+  const data = [];
+  for(let i=days-1;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const meals = key===todayKey() ? state.meals : getMealsForDate(key);
+    const p = meals.reduce((s,m)=>s+(Number(m.protein)||0),0);
+    data.push({key, p});
+  }
+  const maxVal = Math.max(target*1.2, ...data.map(d=>d.p), 1);
+  const w = 300, h = 90, barGap = 3;
+  const barW = (w/days) - barGap;
+  const bars = data.map((d,i)=>{
+    const barH = Math.max(2, (d.p/maxVal)*h);
+    const x = i*(w/days) + barGap/2;
+    const y = h - barH;
+    const over = d.p > target;
+    return `<rect x="${x}" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${over? 'var(--secondary)':'var(--good)'}"></rect>`;
+  }).join('');
+  const targetY = h - (target/maxVal)*h;
+  container.innerHTML = `
+    <div class="section-label">Protein &mdash; last 14 days (target ${target}g)</div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:100px; overflow:visible; display:block;">
+      <line x1="0" y1="${targetY}" x2="${w}" y2="${targetY}" stroke="var(--ink-soft)" stroke-dasharray="4 3" stroke-width="1"></line>
+      ${bars}
+    </svg>
+  `;
 }
 
 function renderProfilePill(){
