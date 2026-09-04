@@ -232,6 +232,7 @@
     <button class="action-card" onclick="showScreen('log')"><span class="action-emoji">📝</span><span>Log a Meal</span></button>
     <button class="action-card" onclick="showScreen('today')"><span class="action-emoji">📋</span><span>Today's Log</span></button>
     <button class="action-card" onclick="showScreen('history')"><span class="action-emoji">📅</span><span>History</span></button>
+    <button class="action-card" onclick="showScreen('weight')"><span class="action-emoji">⚖️</span><span>Body Weight</span></button>
   </div>
 </div>
 
@@ -319,10 +320,44 @@
 
   <!-- HISTORY PANEL -->
   <div class="panel" id="panelHistory">
+    <div class="card">
+      <button class="btn" style="width:100%" onclick="shareWeeklySummary()">📤 Share Weekly Summary</button>
+    </div>
     <div class="card"><div id="trendChart"></div></div>
     <div class="card" id="historyCard"><div id="historyList"></div></div>
   </div>
+
+  <!-- WEIGHT PANEL -->
+  <div class="panel" id="panelWeight">
+    <div class="card">
+      <div class="row2">
+        <div class="field"><label>Weight</label><input type="number" id="weightValue" step="0.1" placeholder="e.g. 186.5"></div>
+        <div class="field"><label>Unit</label>
+          <select id="weightUnit">
+            <option value="lbs">lbs</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Date</label><input type="date" id="weightDate"></div>
+      <button class="btn" style="width:100%" onclick="saveWeightEntry()">Save weight</button>
+    </div>
+    <div class="card"><div id="weightTrendChart"></div></div>
+    <div class="card"><div id="weightHistoryList"></div></div>
+  </div>
   </main>
+</div>
+
+<div class="modal-bg" id="summaryModal">
+  <div class="modal">
+    <h2>Weekly Summary</h2>
+    <textarea id="summaryText" readonly style="width:100%; min-height:220px; border:2px solid var(--line); border-radius:10px; padding:12px; font-family:'Nunito'; font-size:0.85rem; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+    <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+      <button class="btn" onclick="copySummaryText()">Copy</button>
+      <button class="btn secondary" id="shareSummaryBtn" style="display:none;" onclick="nativeShareSummary()">Share</button>
+      <button class="btn secondary" onclick="closeSummaryModal()">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-bg" id="editMealModal">
@@ -979,10 +1014,11 @@ function showScreen(screen){
   }
   home.style.display = 'none';
   sub.style.display = 'block';
-  ['Log','Today','History'].forEach(t=>{
+  ['Log','Today','History','Weight'].forEach(t=>{
     document.getElementById('panel'+t).classList.toggle('active', t.toLowerCase()===screen);
   });
   if(screen === 'history') loadHistory();
+  if(screen === 'weight') loadWeightScreen();
   window.scrollTo(0,0);
 }
 function switchSub(sub){
@@ -1318,6 +1354,186 @@ function renderTrendChart(){
   `;
 }
 
+function weightKey(dateStr){ return 'weight:'+activeProfileId+':'+dateStr; }
+
+function getWeightForDate(dateStr){
+  try{
+    const raw = lsGet(weightKey(dateStr));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+
+function loadWeightScreen(){
+  const dateField = document.getElementById('weightDate');
+  dateField.value = todayKey();
+  dateField.max = todayKey();
+  const existing = getWeightForDate(todayKey());
+  document.getElementById('weightValue').value = existing ? existing.lbs : '';
+  document.getElementById('weightUnit').value = 'lbs';
+  renderWeightTrend();
+  renderWeightHistoryList();
+}
+
+function saveWeightEntry(){
+  const raw = Number(document.getElementById('weightValue').value);
+  if(!raw || raw <= 0){ showToast('Enter a valid weight'); return; }
+  const unit = document.getElementById('weightUnit').value;
+  const lbs = unit === 'kg' ? raw * 2.20462 : raw;
+  const dateStr = document.getElementById('weightDate').value || todayKey();
+  const ok = lsSet(weightKey(dateStr), JSON.stringify({lbs: Math.round(lbs*10)/10}));
+  if(!ok){ showToast('Could not save \u2014 storage may be full'); return; }
+  showToast('Weight saved for '+dateStr);
+  renderWeightTrend();
+  renderWeightHistoryList();
+  renderWeekStrip();
+}
+
+function deleteWeightEntry(dateStr){
+  try{ localStorage.removeItem(weightKey(dateStr)); } catch(e){}
+  renderWeightTrend();
+  renderWeightHistoryList();
+  showToast('Weight entry deleted');
+}
+
+function renderWeightTrend(){
+  const container = document.getElementById('weightTrendChart');
+  if(!container) return;
+  const days = 30;
+  const entries = [];
+  for(let i=days-1;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const w = getWeightForDate(key);
+    if(w) entries.push({key, lbs:w.lbs});
+  }
+  if(entries.length < 2){
+    container.innerHTML = '<div class="section-label">Weight trend</div><div class="empty-state">Log a couple of entries to see a trend.</div>';
+    return;
+  }
+  const values = entries.map(e=>e.lbs);
+  const minV = Math.min(...values), maxV = Math.max(...values);
+  const range = Math.max(maxV-minV, 1);
+  const w = 300, h = 90, pad = 6;
+  const stepX = (w - pad*2) / (entries.length - 1);
+  const points = entries.map((e,i)=>{
+    const x = pad + i*stepX;
+    const y = h - pad - ((e.lbs - minV)/range) * (h - pad*2);
+    return {x, y};
+  });
+  const path = points.map((p,i)=> (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+  const dots = points.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="var(--primary)"></circle>`).join('');
+  container.innerHTML = `
+    <div class="section-label">Weight &mdash; last 30 days (${minV.toFixed(1)}&ndash;${maxV.toFixed(1)} lbs)</div>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%; height:100px; overflow:visible; display:block;">
+      <path d="${path}" fill="none" stroke="var(--primary)" stroke-width="2"></path>
+      ${dots}
+    </svg>
+  `;
+}
+
+function renderWeightHistoryList(){
+  const list = document.getElementById('weightHistoryList');
+  const prefix = 'weight:'+activeProfileId+':';
+  const keys = lsListPrefix(prefix);
+  if(!keys.length){ list.innerHTML = '<div class="empty-state">No weight entries yet.</div>'; return; }
+  const dates = keys.map(k=>k.slice(prefix.length)).sort().reverse().slice(0,30);
+  list.innerHTML = dates.map(d=>{
+    const w = getWeightForDate(d);
+    if(!w) return '';
+    return `<div class="hist-row"><span>${d}</span><span>${w.lbs.toFixed(1)} lbs <button class="del" style="margin-left:8px;" onclick="deleteWeightEntry('${d}')" title="Delete">&times;</button></span></div>`;
+  }).join('');
+}
+
+function computeWeeklySummary(){
+  const days = 7;
+  const rows = [];
+  for(let i=days-1;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const meals = key===todayKey() ? state.meals : getMealsForDate(key);
+    rows.push({key, meals});
+  }
+  const loggedDays = rows.filter(r=>r.meals.length>0);
+  const n = loggedDays.length || 1;
+  const totals = loggedDays.reduce((acc,r)=>{
+    const dayTotals = r.meals.reduce((a,m)=>{
+      a.cal += Number(m.calories)||0; a.p += Number(m.protein)||0; a.c += Number(m.carbs)||0; a.f += Number(m.fat)||0;
+      return a;
+    }, {cal:0,p:0,c:0,f:0});
+    acc.cal += dayTotals.cal; acc.p += dayTotals.p; acc.c += dayTotals.c; acc.f += dayTotals.f;
+    if(dayTotals.p >= state.targets.protein) acc.proteinHit++;
+    return acc;
+  }, {cal:0,p:0,c:0,f:0,proteinHit:0});
+
+  const avg = {
+    cal: Math.round(totals.cal/n),
+    p: Math.round(totals.p/n),
+    c: Math.round(totals.c/n),
+    f: Math.round(totals.f/n)
+  };
+
+  let firstWeight = null, lastWeight = null;
+  rows.forEach(r=>{
+    const w = getWeightForDate(r.key);
+    if(w){ if(firstWeight===null) firstWeight = w.lbs; lastWeight = w.lbs; }
+  });
+
+  const profile = profiles.find(p=>p.id===activeProfileId) || {name:'Me'};
+  const startLabel = new Date(rows[0].key+'T00:00:00').toLocaleDateString(undefined,{month:'short', day:'numeric'});
+  const endLabel = new Date(rows[rows.length-1].key+'T00:00:00').toLocaleDateString(undefined,{month:'short', day:'numeric'});
+
+  let text = `Weekly Summary \u2014 ${profile.name}\n${startLabel} \u2013 ${endLabel} (${state.phase==='phase1' ? 'Phase 1' : 'Phase 2'})\n\n`;
+  text += `Days logged: ${loggedDays.length}/7\n\n`;
+  text += `Daily averages (logged days):\n`;
+  text += `  Calories: ${avg.cal} (target ${state.targets.calories})\n`;
+  text += `  Protein: ${avg.p}g (target ${state.targets.protein}g)\n`;
+  text += `  Carbs: ${avg.c}g (target ${state.targets.carbs}g)\n`;
+  text += `  Fat: ${avg.f}g (target ${state.targets.fat}g)\n\n`;
+  text += `Protein target met: ${totals.proteinHit}/${loggedDays.length} logged days`;
+  if(firstWeight!==null && lastWeight!==null){
+    const delta = (lastWeight - firstWeight).toFixed(1);
+    text += `\n\nWeight: ${firstWeight.toFixed(1)} \u2192 ${lastWeight.toFixed(1)} lbs (${delta>=0?'+':''}${delta} lbs)`;
+  }
+  text += `\n\nGenerated by Diet Tracker`;
+  return text;
+}
+
+function shareWeeklySummary(){
+  const text = computeWeeklySummary();
+  document.getElementById('summaryText').value = text;
+  document.getElementById('shareSummaryBtn').style.display = navigator.share ? 'inline-block' : 'none';
+  document.getElementById('summaryModal').classList.add('open');
+}
+
+function closeSummaryModal(){
+  document.getElementById('summaryModal').classList.remove('open');
+}
+
+function copySummaryText(){
+  const ta = document.getElementById('summaryText');
+  ta.select();
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value)
+      .then(()=> showToast('Copied to clipboard'))
+      .catch(()=>{
+        try{ document.execCommand('copy'); showToast('Copied to clipboard'); }
+        catch(e){ showToast('Could not copy \u2014 select the text manually'); }
+      });
+  } else {
+    try{ document.execCommand('copy'); showToast('Copied to clipboard'); }
+    catch(e){ showToast('Could not copy \u2014 select the text manually'); }
+  }
+}
+
+function nativeShareSummary(){
+  const text = document.getElementById('summaryText').value;
+  if(navigator.share){
+    navigator.share({title:'Weekly Summary', text}).catch(()=>{});
+  }
+}
+
 function renderProfilePill(){
   const p = profiles.find(x=>x.id===activeProfileId) || {name:'Me'};
   document.getElementById('profilePill').innerHTML =
@@ -1368,7 +1584,9 @@ function deleteProfile(id){
   if(id===activeProfileId){ showToast('Switch away from this profile first'); return; }
   if(!confirm('Delete this profile and all of its logged data? This cannot be undone.')) return;
   lsListPrefix('meals:'+id+':').forEach(k=>{ try{ localStorage.removeItem(k); } catch(e){} });
+  lsListPrefix('weight:'+id+':').forEach(k=>{ try{ localStorage.removeItem(k); } catch(e){} });
   try{ localStorage.removeItem('settings:'+id+':targets'); } catch(e){}
+  try{ localStorage.removeItem('favorites:'+id); } catch(e){}
   profiles = profiles.filter(p=>p.id!==id);
   saveProfiles(profiles);
   renderProfileList();
@@ -1378,7 +1596,9 @@ function deleteProfile(id){
 function exportData(){
   const dump = {};
   lsListPrefix('meals:').forEach(k=> dump[k] = lsGet(k));
+  lsListPrefix('weight:').forEach(k=> dump[k] = lsGet(k));
   lsListPrefix('settings:').forEach(k=> dump[k] = lsGet(k));
+  lsListPrefix('favorites:').forEach(k=> dump[k] = lsGet(k));
   const profilesRaw = lsGet('profiles'); if(profilesRaw) dump['profiles'] = profilesRaw;
   const activeRaw = lsGet('activeProfile'); if(activeRaw) dump['activeProfile'] = activeRaw;
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
