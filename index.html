@@ -399,8 +399,10 @@
     <div id="dayDetailTotals"></div>
     <div id="dayDetailSelectAll"></div>
     <div id="dayDetailList"></div>
-    <div style="display:flex; gap:10px; margin-top:14px;">
-      <button class="btn" onclick="copySelectedToToday()">Copy selected to today</button>
+    <div class="field" style="margin-top:12px;"><label>Move/copy selected to</label><input type="date" id="dayDetailTargetDate"></div>
+    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+      <button class="btn" onclick="copySelectedToDate()">Copy</button>
+      <button class="btn" onclick="moveSelectedToDate()">Move</button>
       <button class="btn secondary" onclick="closeDayDetail()">Close</button>
     </div>
   </div>
@@ -1138,6 +1140,9 @@ function openDayDetail(dateKey){
   const selectAllWrap = document.getElementById('dayDetailSelectAll');
   const list = document.getElementById('dayDetailList');
   document.getElementById('dayDetailModal').classList.add('open');
+  const targetDateField = document.getElementById('dayDetailTargetDate');
+  targetDateField.value = todayKey();
+  targetDateField.max = todayKey();
 
   renderDayTotals(meals);
 
@@ -1172,22 +1177,52 @@ function closeDayDetail(){
   currentDetailDate = null;
 }
 
-function copySelectedToToday(){
+function copySelectedToDate(){
   if(!currentDetailDate) return;
+  const targetDate = document.getElementById('dayDetailTargetDate').value || todayKey();
   const selectedIds = Array.from(document.querySelectorAll('.day-check:checked')).map(cb=>cb.dataset.mealId);
   if(!selectedIds.length){ showToast('Select at least one item first'); return; }
   const meals = getMealsForDate(currentDetailDate);
   let count = 0;
   meals.forEach(m=>{
     if(selectedIds.includes(m.id)){
-      state.meals.push({...m, id: Date.now()+'-'+Math.random().toString(36).slice(2), source:'copied'});
+      const copy = {...m, id: Date.now()+'-'+Math.random().toString(36).slice(2), source:'copied'};
+      saveMealToDate(targetDate, copy);
       count++;
     }
   });
-  saveMeals();
-  renderAll();
+  loadHistory();
   closeDayDetail();
-  showToast('Copied '+count+' item'+(count===1?'':'s')+' to today');
+  showToast('Copied '+count+' item'+(count===1?'':'s')+' to '+targetDate);
+}
+
+function moveSelectedToDate(){
+  if(!currentDetailDate) return;
+  const targetDate = document.getElementById('dayDetailTargetDate').value || todayKey();
+  if(targetDate === currentDetailDate){ showToast('Pick a different date to move to'); return; }
+  const selectedIds = Array.from(document.querySelectorAll('.day-check:checked')).map(cb=>cb.dataset.mealId);
+  if(!selectedIds.length){ showToast('Select at least one item first'); return; }
+
+  const meals = getMealsForDate(currentDetailDate);
+  const toMove = meals.filter(m=>selectedIds.includes(m.id));
+  const remaining = meals.filter(m=>!selectedIds.includes(m.id));
+
+  if(currentDetailDate === todayKey()){
+    state.meals = remaining;
+    saveMeals();
+  } else {
+    lsSet(mealsKey(currentDetailDate), JSON.stringify(remaining));
+  }
+
+  toMove.forEach(m=>{
+    const moved = {...m, id: Date.now()+'-'+Math.random().toString(36).slice(2), source:'moved'};
+    saveMealToDate(targetDate, moved);
+  });
+
+  renderAll();
+  loadHistory();
+  closeDayDetail();
+  showToast('Moved '+toMove.length+' item'+(toMove.length===1?'':'s')+' to '+targetDate);
 }
 
 function deleteHistMeal(dateKey, mealId){
