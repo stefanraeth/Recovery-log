@@ -259,7 +259,7 @@
           <input type="text" id="manName" placeholder="e.g. Grilled chicken, rice, broccoli">
         </div>
         <div class="row2">
-          <div class="field"><label>Date</label><input type="date" id="manDate"></div>
+          <div class="field"><label>Date</label><input type="date" id="manDate"><button type="button" class="fav-chip" style="margin-top:6px; font-size:0.75rem; padding:6px 12px;" onclick="viewDateFromField('manDate')">&#128065; View this day's log</button></div>
           <div class="field"><label>Time</label><input type="time" id="manTime"></div>
         </div>
         <div class="field"><label>Calories (optional &mdash; auto-calculated)</label><input type="number" id="manCal" placeholder="auto"></div>
@@ -286,7 +286,7 @@
           <div class="day-totals" id="mealBuilderTotals" style="margin-top:10px;"></div>
           <div class="field" style="margin-top:10px;"><label>Meal name</label><input type="text" id="mealBuilderName" placeholder="e.g. Lunch" oninput="this.dataset.userEdited='1'"></div>
           <div class="row2">
-            <div class="field"><label>Date</label><input type="date" id="mealBuilderDate"></div>
+            <div class="field"><label>Date</label><input type="date" id="mealBuilderDate"><button type="button" class="fav-chip" style="margin-top:6px; font-size:0.75rem; padding:6px 12px;" onclick="viewDateFromField('mealBuilderDate')">&#128065; View this day's log</button></div>
             <div class="field"><label>Time</label><input type="time" id="mealBuilderTime"></div>
           </div>
           <div style="display:flex; gap:10px; margin-top:6px;">
@@ -399,7 +399,7 @@
     <div id="dayDetailTotals"></div>
     <div id="dayDetailSelectAll"></div>
     <div id="dayDetailList"></div>
-    <div class="field" style="margin-top:12px;"><label>Move/copy selected to</label><input type="date" id="dayDetailTargetDate"></div>
+    <div class="field" style="margin-top:12px;"><label>Move/copy selected to</label><input type="date" id="dayDetailTargetDate"><button type="button" class="fav-chip" style="margin-top:6px; font-size:0.75rem; padding:6px 12px;" onclick="viewDateFromField('dayDetailTargetDate')">&#128065; View this day's log</button></div>
     <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
       <button class="btn" onclick="copySelectedToDate()">Copy</button>
       <button class="btn" onclick="moveSelectedToDate()">Move</button>
@@ -809,7 +809,7 @@ function renderBarcodeNotFound(code){
       <p class="small-note">No database match for barcode ${code} \u2014 enter it manually below (check the package label).</p>
       <div class="field"><label>Product</label><input type="text" id="bcName" value="Packaged food"></div>
       <div class="row2">
-        <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"></div>
+        <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"><button type="button" class="fav-chip" style="margin-top:6px; font-size:0.75rem; padding:6px 12px;" onclick="viewDateFromField('bcDate')">&#128065; View</button></div>
         <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
       </div>
       <div class="field"><label>Calories</label><input type="number" id="bcCal" value="0"></div>
@@ -851,7 +851,7 @@ function renderBarcodeResult(name, brand, per100, perServing, servingLabel){
         </div>
       </div>
       <div class="field"><label>Time</label><input type="time" id="bcTime" value="${nowTime()}"></div>
-      <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"></div>
+      <div class="field"><label>Date</label><input type="date" id="bcDate" value="${todayKey()}" max="${todayKey()}"><button type="button" class="fav-chip" style="margin-top:6px; font-size:0.75rem; padding:6px 12px;" onclick="viewDateFromField('bcDate')">&#128065; View this day's log</button></div>
       <div class="row4">
         <div class="field"><label>Protein (g)</label><input type="number" id="bcProtein" value="${initProtein.toFixed(1)}"></div>
         <div class="field"><label>Carbs (g)</label><input type="number" id="bcCarbs" value="${initCarbs.toFixed(1)}"></div>
@@ -1131,6 +1131,13 @@ function renderDayTotals(meals){
     <div class="dt-item"><span class="dt-label">Carbs</span>${Math.round(totals.carbs)}g</div>
     <div class="dt-item"><span class="dt-label">Fat</span>${Math.round(totals.fat)}g</div>
   `;
+}
+
+function viewDateFromField(fieldId){
+  const field = document.getElementById(fieldId);
+  const val = field && field.value;
+  if(!val){ showToast('Pick a date first'); return; }
+  openDayDetail(val);
 }
 
 function openDayDetail(dateKey){
